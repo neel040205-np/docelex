@@ -14,6 +14,9 @@ const connectDB = async () => {
   }
 };
 
+
+
+
 const mockStudentsData = (teacherId) => [
   {
     name: 'Aarav Sharma',
@@ -221,6 +224,8 @@ const seedData = async () => {
     // Create Students
     console.log('Seeding mock students...');
     const studentsData = mockStudentsData(teacherUser._id);
+    
+    
     
     // Inject mock uploaded document placeholders to simulate real states
     // Student 1 (Aarav): complete uploads

@@ -9,6 +9,21 @@ const generateToken = (id) => {
   });
 };
 
+const sendAuthResponse = (res, user, statusCode = 200) => {
+  const token = generateToken(user._id);
+
+  return res.status(statusCode).json({
+    success: true,
+    token,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  });
+};
+
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
 // @access  Public
@@ -34,8 +49,6 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const token = generateToken(user._id);
-
     // Write audit log for login
     await AuditLog.create({
       action: 'USER_LOGIN',
@@ -44,16 +57,7 @@ exports.login = async (req, res) => {
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
-    res.status(200).json({
-      success: true,
-      token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    return sendAuthResponse(res, user);
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

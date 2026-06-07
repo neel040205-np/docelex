@@ -16,7 +16,7 @@ const DocumentSchema = new mongoose.Schema({
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: false,///////////////
   },
   uploadedAt: {
     type: Date,
@@ -108,7 +108,7 @@ const StudentSchema = new mongoose.Schema(
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
     },
   },
   {
