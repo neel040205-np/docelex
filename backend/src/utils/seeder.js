@@ -6,7 +6,7 @@ const AuditLog = require('../models/AuditLog');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/docelex');
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://neelpatelnp0402_db_user:Neel0402%23%40@docelex.1x1y2lf.mongodb.net/?appName=docelex');
     console.log(`Seeder database connection established: ${conn.connection.host}`);
   } catch (error) {
     console.error(`Seeder DB connection failed: ${error.message}`);
