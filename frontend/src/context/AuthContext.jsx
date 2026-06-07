@@ -60,25 +60,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (name, email, password) => {
-    setLoading(true);
-    try {
-      const response = await client.post('/auth/signup', { name, email, password });
-      if (response.success) {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
-        message.success(i18n.t('auth.accountCreated', { name: response.user.name }));
-        return response.user;
-      }
-    } catch (error) {
-      console.error('Signup action failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Logout handler
   const logout = () => {
     localStorage.removeItem('token');
@@ -92,7 +73,6 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     loading,
     login,
-    signup,
     logout,
   };
 
