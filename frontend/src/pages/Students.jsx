@@ -679,14 +679,31 @@ export const Students = () => {
                                   {docRecord.fileName}
                                 </div>
                                 <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                  <Button
-                                    type="link"
-                                    size="small"
-                                    onClick={() => window.open(docRecord.url, '_blank')}
-                                    style={{ padding: 0, fontSize: '12px' }}
-                                  >
-                                    View File
-                                  </Button>
+                                <Space>
+  <Button
+    type="link"
+    size="small"
+    icon={<EyeOutlined />}
+    onClick={() => window.open(docRecord.url, '_blank')}
+  >
+    View
+  </Button>
+
+  <Button
+    type="link"
+    size="small"
+    icon={<DownloadOutlined />}
+    onClick={() => {
+      const downloadUrl = docRecord.url.replace(
+        '/upload/',
+        '/upload/fl_attachment/'
+      );
+      window.open(downloadUrl, '_blank');
+    }}
+  >
+    Download
+  </Button>
+</Space>
                                   <Popconfirm
                                     title="Remove this file?"
                                     onConfirm={() => deleteDocMutation.mutate({ studentId: student._id, docType: doc.key })}
