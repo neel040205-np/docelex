@@ -130,3 +130,144 @@ body.dark-theme .glass-panel {
   background-color: var(--bg-card) !important;
   box-shadow: var(--shadow-premium) !important;
 }
+
+/* ==========================================
+   MOBILE RESPONSIVE IMPROVEMENTS
+========================================== */
+
+@media (max-width: 768px) {
+
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Page spacing */
+  .ant-layout-content,
+  .page-content {
+    padding: 12px !important;
+  }
+
+  /* Headings */
+  h1,
+  .ant-typography h1 {
+    font-size: 24px !important;
+  }
+
+  h2,
+  .ant-typography h2 {
+    font-size: 20px !important;
+  }
+
+  h3,
+  .ant-typography h3 {
+    font-size: 18px !important;
+  }
+
+  /* Cards */
+  .ant-card {
+    border-radius: 12px !important;
+  }
+
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* Tables */
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table-cell {
+    white-space: nowrap;
+  }
+
+  /* Buttons */
+  .ant-btn {
+    min-height: 38px;
+  }
+
+  /* Forms */
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .ant-input,
+  .ant-select-selector,
+  .ant-picker {
+    min-height: 40px !important;
+  }
+
+  /* Modals */
+  .ant-modal {
+    max-width: 95vw !important;
+    margin: 10px auto !important;
+  }
+
+  .ant-modal-content {
+    border-radius: 12px !important;
+  }
+
+  .ant-modal-body {
+    padding: 14px !important;
+  }
+
+  /* Descriptions */
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content {
+    font-size: 12px;
+  }
+
+  /* Upload buttons */
+  .ant-upload-wrapper {
+    width: 100%;
+  }
+
+  /* Statistics cards */
+  .ant-statistic {
+    text-align: center;
+  }
+
+  /* Space components wrap nicely */
+  .ant-space {
+    flex-wrap: wrap;
+  }
+
+  /* Prevent overflow */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 480px) {
+
+  html {
+    font-size: 13px;
+  }
+
+  .ant-btn {
+    font-size: 12px;
+    padding-inline: 10px;
+  }
+
+  .ant-card-body {
+    padding: 10px !important;
+  }
+
+  .ant-modal-body {
+    padding: 10px !important;
+  }
+
+  .ant-table {
+    font-size: 11px;
+  }
+
+  .ant-tag {
+    font-size: 11px;
+  }
+}
