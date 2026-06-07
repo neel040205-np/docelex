@@ -6,6 +6,45 @@ const path = require('path');
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
 
+const archiver = require('archiver');
+const axios = require('axios');
+
+exports.downloadAllDocuments = async (req, res) => {
+  const students = await Student.find();
+
+  res.attachment('students_documents.zip');
+
+  const archive = archiver('zip', {
+    zlib: { level: 9 },
+  });
+
+  archive.pipe(res);
+
+  for (const student of students) {
+    const folderName = student.name.replace(/[^\w\s]/gi, '');
+
+    for (const [key, doc] of Object.entries(student.documents || {})) {
+      if (!doc?.url) continue;
+
+      try {
+        const response = await axios({
+          method: 'get',
+          url: doc.url,
+          responseType: 'stream',
+        });
+
+        archive.append(response.data, {
+          name: `${folderName}/${doc.fileName}`,
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
+  await archive.finalize();
+};
+
 // Helper to delete physical file
 const deletePhysicalFile = async (publicId) => {
   if (!publicId) return;

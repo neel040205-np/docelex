@@ -53,5 +53,12 @@ router.get('/stats', protect, statsController.getStats);
 // AUDIT LOGS ROUTES
 // ==========================================
 router.get('/audit-logs', protect, auditLogController.getAuditLogs);
-
+// ==========================================
+//DOWNLOAD ALL FILES AT A TIME
+// ==========================================
+router.get(
+  '/students/download/all',
+  protect,
+  studentController.downloadAllDocuments
+);
 module.exports = router;
