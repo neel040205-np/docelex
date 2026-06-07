@@ -2,10 +2,7 @@ import axios from 'axios';
 import { message } from 'antd';
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: 'https://docelex.onrender.com/api',
 });
 
 // Request Interceptor: Attach JWT Token automatically
