@@ -652,17 +652,7 @@ export const Students = () => {
                     {documentTypes.map((doc) => {
                       const docRecord = student.documents?.[doc.key];
                       const isUploaded = !!(docRecord && docRecord.url);
-                      <Button
-  icon={<DownloadOutlined />}
-  onClick={() => {
-    window.open(
-      `${import.meta.env.VITE_API_URL}/students/download/all?token=${localStorage.getItem('token')}`,
-      '_blank'
-    );
-  }}
->
-  Download All ZIP
-</Button>
+                      
 
                       return (
                         <Col span={8} key={doc.key}>
