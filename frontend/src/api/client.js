@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { message } from 'antd';
+import i18n from '../i18n';
 
 const client = axios.create({
   baseURL: 'https://docelex.onrender.com/api',
@@ -26,7 +27,7 @@ client.interceptors.response.use(
   },
   (error) => {
     const status = error.response ? error.response.status : null;
-    const errorMsg = error.response?.data?.message || 'Something went wrong. Please try again.';
+    const errorMsg = error.response?.data?.message || i18n.t('api.genericError');
 
     if (status === 401) {
       // Unauthorized: clear credentials and redirect to login
@@ -35,13 +36,13 @@ client.interceptors.response.use(
       
       // Prevent multiple alerts on page load
       if (!window.location.pathname.includes('/login')) {
-        message.error('Session expired. Please log in again.');
+        message.error(i18n.t('api.sessionExpired'));
         setTimeout(() => {
           window.location.href = '/login';
         }, 1500);
       }
     } else if (status === 403) {
-      message.error(errorMsg || 'You are not authorized to perform this action.');
+      message.error(errorMsg || i18n.t('api.notAuthorized'));
     } else if (status === 404) {
       // Let individual queries handle 404 if needed, otherwise display error
       console.warn('Resource not found:', error.config.url);

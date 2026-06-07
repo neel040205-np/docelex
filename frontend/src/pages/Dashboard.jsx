@@ -23,11 +23,13 @@ import {
   Cell,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Paragraph } = Typography;
 
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // React Query fetch
   const { data, isLoading, isError, refetch } = useQuery({
@@ -38,7 +40,7 @@ export const Dashboard = () => {
   if (isLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size="large" tip="Loading statistics..." />
+        <Spin size="large" tip={t('dashboard.loadingStats')} />
       </div>
     );
   }
@@ -46,13 +48,13 @@ export const Dashboard = () => {
   if (isError) {
     return (
       <Alert
-        message="Data Loading Error"
-        description="Could not load system analytics. Please ensure the backend server is running and database is reachable."
+        message={t('dashboard.dataError')}
+        description={t('dashboard.dataErrorDescription')}
         type="error"
         showIcon
         action={
           <Button size="small" type="primary" onClick={() => refetch()} icon={<ReloadOutlined />}>
-            Retry
+            {t('common.retry')}
           </Button>
         }
       />
@@ -63,8 +65,8 @@ export const Dashboard = () => {
 
   // Pie chart calculation
   const pieData = [
-    { name: 'Complete Records', value: metrics.completeDocsStudents, color: '#10b981' },
-    { name: 'Incomplete Records', value: metrics.missingDocsStudents, color: '#ef4444' },
+    { name: t('dashboard.completeRecords'), value: metrics.completeDocsStudents, color: '#10b981' },
+    { name: t('dashboard.incompleteRecords'), value: metrics.missingDocsStudents, color: '#ef4444' },
   ];
 
   return (
@@ -73,10 +75,10 @@ export const Dashboard = () => {
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0, fontWeight: 700 }}>
-            Dashboard Overview
+            {t('dashboard.title')}
           </Title>
           <Paragraph type="secondary" style={{ margin: 0 }}>
-            Real-time directory and verification statistics
+            {t('dashboard.subtitle')}
           </Paragraph>
         </div>
         <div style={{ marginLeft: 'auto' }}>
@@ -86,7 +88,7 @@ export const Dashboard = () => {
             onClick={() => navigate('/students')}
             style={{ borderRadius: '8px' }}
           >
-            Manage Directory <ArrowRightOutlined />
+            {t('dashboard.manageDirectory')} <ArrowRightOutlined />
           </Button>
         </div>
       </div>
@@ -104,7 +106,7 @@ export const Dashboard = () => {
             }}
           >
             <Statistic
-              title={<span style={{ color: '#4f46e5', fontWeight: 600 }}>Total Students</span>}
+              title={<span style={{ color: '#4f46e5', fontWeight: 600 }}>{t('dashboard.totalStudents')}</span>}
               value={metrics.totalStudents}
               valueStyle={{ fontSize: '36px', fontWeight: 800, color: '#312e81' }}
               prefix={<UserOutlined style={{ marginRight: '8px', color: '#6366f1' }} />}
@@ -123,7 +125,7 @@ export const Dashboard = () => {
             }}
           >
             <Statistic
-              title={<span style={{ color: '#059669', fontWeight: 600 }}>Complete Records</span>}
+              title={<span style={{ color: '#059669', fontWeight: 600 }}>{t('dashboard.completeRecords')}</span>}
               value={metrics.completeDocsStudents}
               valueStyle={{ fontSize: '36px', fontWeight: 800, color: '#064e3b' }}
               prefix={<FileDoneOutlined style={{ marginRight: '8px', color: '#10b981' }} />}
@@ -142,7 +144,7 @@ export const Dashboard = () => {
             }}
           >
             <Statistic
-              title={<span style={{ color: '#dc2626', fontWeight: 600 }}>Missing Documents</span>}
+              title={<span style={{ color: '#dc2626', fontWeight: 600 }}>{t('dashboard.missingDocuments')}</span>}
               value={metrics.missingDocsStudents}
               valueStyle={{ fontSize: '36px', fontWeight: 800, color: '#7f1d1d' }}
               prefix={<FileExclamationOutlined style={{ marginRight: '8px', color: '#ef4444' }} />}
@@ -156,7 +158,7 @@ export const Dashboard = () => {
         {/* Class distribution chart */}
         <Col xs={24} lg={16}>
           <Card
-            title={<span style={{ fontWeight: 600 }}>Class-Wise Document Status</span>}
+            title={<span style={{ fontWeight: 600 }}>{t('dashboard.classWiseStatus')}</span>}
             bordered={false}
             style={{ boxShadow: 'var(--shadow-premium)', background: 'var(--bg-card)' }}
           >
@@ -168,8 +170,8 @@ export const Dashboard = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="complete" name="Complete Documents" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="missing" name="Missing Documents" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="complete" name={t('dashboard.completeDocuments')} fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="missing" name={t('dashboard.missingDocuments')} fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -179,13 +181,13 @@ export const Dashboard = () => {
         {/* Completion Breakdown Pie */}
         <Col xs={24} lg={8}>
           <Card
-            title={<span style={{ fontWeight: 600 }}>Record Verification Rate</span>}
+            title={<span style={{ fontWeight: 600 }}>{t('dashboard.recordVerificationRate')}</span>}
             bordered={false}
             style={{ boxShadow: 'var(--shadow-premium)', background: 'var(--bg-card)' }}
           >
             <div style={{ height: '350px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               {metrics.totalStudents === 0 ? (
-                <div style={{ color: 'var(--text-secondary)' }}>No Students Found</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{t('dashboard.noStudentsFound')}</div>
               ) : (
                 <>
                   <ResponsiveContainer width="100%" height={250}>
@@ -225,7 +227,7 @@ export const Dashboard = () => {
         {/* Document upload counts horizontal chart */}
         <Col xs={24}>
           <Card
-            title={<span style={{ fontWeight: 600 }}>Verification Progress by Document Type</span>}
+            title={<span style={{ fontWeight: 600 }}>{t('dashboard.verificationProgress')}</span>}
             bordered={false}
             style={{ boxShadow: 'var(--shadow-premium)', background: 'var(--bg-card)' }}
           >
@@ -241,8 +243,8 @@ export const Dashboard = () => {
                   <YAxis dataKey="name" type="category" width={150} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="uploaded" name="Uploaded" fill="#6366f1" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="missing" name="Missing" fill="#e2e8f0" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="uploaded" name={t('dashboard.uploaded')} fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="missing" name={t('dashboard.missing')} fill="#e2e8f0" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

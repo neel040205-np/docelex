@@ -106,15 +106,144 @@ body.dark-theme .glass-panel {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Login Page illustration background pattern */
-.login-bg-pattern {
-  background-color: #4f46e5;
-  background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
-                    radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
-                    radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%),
-                    radial-gradient(at 0% 100%, hsla(339,49%,30%,1) 0, transparent 50%),
-                    radial-gradient(at 100% 100%, hsla(225,39%,30%,1) 0, transparent 50%);
-  background-size: cover;
+/* Login Page */
+.login-shell {
+  min-height: 100vh;
+  width: 100vw;
+  background: #ffffff;
+  color: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  position: relative;
+}
+
+.login-shell::before {
+  content: '';
+  position: absolute;
+  inset: 24px;
+  border: 1px solid #e5e5e5;
+  pointer-events: none;
+}
+
+.login-language {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  z-index: 1;
+}
+
+.login-language-select {
+  width: 124px;
+}
+
+.login-language-select .ant-select-selector {
+  border-color: #111111 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+.login-main {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card {
+  width: 100%;
+  background: #ffffff !important;
+  border: 1px solid #111111 !important;
+  border-radius: 0 !important;
+  box-shadow: 12px 12px 0 #111111 !important;
+}
+
+.login-card .ant-card-body {
+  padding: 44px 40px !important;
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-title.ant-typography {
+  color: #111111;
+  font-size: 38px !important;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0 0 12px 0 !important;
+}
+
+.login-subtitle {
+  color: #525252;
+  display: block;
+  font-size: 14px;
+}
+
+.login-alert {
+  margin-bottom: 20px;
+  border-radius: 0;
+}
+
+.login-form-item {
+  margin-bottom: 18px;
+}
+
+.login-input.ant-input-affix-wrapper {
+  height: 48px;
+  border-color: #111111;
+  border-radius: 0;
+  color: #111111;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.login-input.ant-input-affix-wrapper:hover,
+.login-input.ant-input-affix-wrapper-focused {
+  border-color: #111111;
+  box-shadow: 4px 4px 0 #111111;
+}
+
+.login-input .ant-input,
+.login-input .ant-input-password-icon,
+.login-input .anticon {
+  color: #111111;
+}
+
+.login-submit-item {
+  margin: 26px 0 0 0;
+}
+
+.login-submit.ant-btn {
+  height: 48px;
+  border-radius: 0;
+  background: #111111;
+  border-color: #111111;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.login-submit.ant-btn:hover,
+.login-submit.ant-btn:focus {
+  background: #ffffff !important;
+  border-color: #111111 !important;
+  color: #111111 !important;
+  box-shadow: 4px 4px 0 #111111;
+}
+
+.login-demo {
+  border-top: 1px solid #d4d4d4;
+  color: #525252;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 24px;
+  padding-top: 16px;
+  text-align: center;
 }
 
 /* Ant Design Table adjustments */
@@ -240,6 +369,32 @@ body.dark-theme .glass-panel {
   img {
     max-width: 100%;
     height: auto;
+  }
+
+  .login-shell {
+    padding: 24px;
+  }
+
+  .login-shell::before {
+    inset: 12px;
+  }
+
+  .login-language {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+  }
+
+  .login-card {
+    box-shadow: 8px 8px 0 #111111 !important;
+  }
+
+  .login-card .ant-card-body {
+    padding: 36px 24px !important;
+  }
+
+  .login-title.ant-typography {
+    font-size: 32px !important;
   }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Button, Dropdown, Space, Avatar, Typography } from 'antd';
+import { Layout, Menu, Button, Dropdown, Space, Avatar, Typography, Select } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const { Header, Sider, Content, Footer } = Layout;
 const { Text } = Typography;
@@ -20,24 +21,30 @@ const { Text } = Typography;
 export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleLanguageChange = (language) => {
+    i18n.changeLanguage(language);
+    localStorage.setItem('language', language);
+  };
 
   const menuItems = [
     {
       key: '/',
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
     },
     {
       key: '/students',
       icon: <UserOutlined />,
-      label: 'Student Directory',
+      label: t('nav.studentDirectory'),
     },
     {
       key: '/audit-logs',
       icon: <HistoryOutlined />,
-      label: 'System Audit Logs',
+      label: t('nav.auditLogs'),
     },
   ];
 
@@ -53,7 +60,7 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
           <div style={{ padding: '8px 12px' }}>
             <div style={{ fontWeight: 600 }}>{user?.name}</div>
             <Text type="secondary" size="small">
-              Teacher
+              {t('nav.teacher')}
             </Text>
           </div>
         ),
@@ -64,7 +71,7 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
       {
         key: 'logout',
         icon: <LogoutOutlined />,
-        label: 'Logout',
+        label: t('nav.logout'),
         danger: true,
         onClick: () => {
           logout();
@@ -150,6 +157,17 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
           />
 
           <Space size="large">
+            <Select
+              aria-label={t('common.language')}
+              value={i18n.language}
+              onChange={handleLanguageChange}
+              style={{ width: 120 }}
+              options={[
+                { value: 'en', label: 'English' },
+                { value: 'gu', label: 'ગુજરાતી' },
+              ]}
+            />
+
             {/* Dark Mode Toggle */}
             <Button
               type="text"
@@ -193,7 +211,7 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
         </Content>
 
         <Footer style={{ textAlign: 'center', color: 'var(--text-secondary)', background: 'transparent' }}>
-          DocElex ©{new Date().getFullYear()} Created with Ant Design & MERN
+          {t('app.footer', { year: new Date().getFullYear() })}
         </Footer>
       </Layout>
     </Layout>

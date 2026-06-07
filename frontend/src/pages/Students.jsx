@@ -40,6 +40,8 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Grid } from 'antd';
+import { useTranslation } from 'react-i18next';
+
 
 const { useBreakpoint } = Grid;
 
@@ -47,6 +49,7 @@ const { Option } = Select;
 const { Title, Paragraph } = Typography;
 
 export const Students = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const isDarkMode = document.body.classList.contains('dark-theme');
 
@@ -97,7 +100,7 @@ export const Students = () => {
   const createMutation = useMutation({
     mutationFn: (newStudent) => client.post('/students', newStudent),
     onSuccess: () => {
-      message.success('Student registered successfully.');
+      message.success(t('students.registeredSuccess'));
       queryClient.invalidateQueries(['students']);
       queryClient.invalidateQueries(['stats']);
       setFormOpen(false);
@@ -109,7 +112,7 @@ export const Students = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => client.put(`/students/${id}`, data),
     onSuccess: () => {
-      message.success('Student records updated.');
+      message.success(t('students.updatedSuccess'));
       queryClient.invalidateQueries(['students']);
       queryClient.invalidateQueries(['student-detail', viewingStudentId]);
       queryClient.invalidateQueries(['stats']);
@@ -123,7 +126,7 @@ export const Students = () => {
   const deleteMutation = useMutation({
     mutationFn: (id) => client.delete(`/students/${id}`),
     onSuccess: () => {
-      message.success('Student records deleted.');
+      message.success(t('students.deletedSuccess'));
       queryClient.invalidateQueries(['students']);
       queryClient.invalidateQueries(['stats']);
     },
@@ -133,7 +136,7 @@ export const Students = () => {
   const deleteDocMutation = useMutation({
     mutationFn: ({ studentId, docType }) => client.delete(`/students/${studentId}/document/${docType}`),
     onSuccess: () => {
-      message.success('Document deleted successfully.');
+      message.success(t('students.documentDeletedSuccess'));
       queryClient.invalidateQueries(['student-detail', viewingStudentId]);
       queryClient.invalidateQueries(['students']);
       queryClient.invalidateQueries(['stats']);
@@ -184,7 +187,7 @@ export const Students = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (response.success) {
-        message.success(`${docType.replace(/([A-Z])/g, ' $1')} uploaded successfully.`);
+        message.success(t('students.documentUploadedSuccess', { document: t(`documents.${docType}`) }));
         queryClient.invalidateQueries(['student-detail', viewingStudentId]);
         queryClient.invalidateQueries(['students']);
         queryClient.invalidateQueries(['stats']);
@@ -207,54 +210,56 @@ export const Students = () => {
   const divisionList = ['A', 'B', 'C', 'D'];
 
   const documentTypes = [
-    { key: 'birthCertificate', name: 'Birth Certificate' },
-    { key: 'studentAadhaar', name: 'Student Aadhaar' },
-    { key: 'fatherAadhaar', name: 'Father Aadhaar' },
-    { key: 'motherAadhaar', name: 'Mother Aadhaar' },
-    { key: 'rationCard', name: 'Ration Card' },
-    { key: 'addressProof', name: 'Address Proof' },
-    { key: 'incomeCertificate', name: 'Income Certificate' },
-    { key: 'casteCertificate', name: 'Caste Certificate' },
-    { key: 'passportPhoto', name: 'Passport Photo' },
+    { key: 'birthCertificate', name: t('documents.birthCertificate') },
+    { key: 'studentAadhaar', name: t('documents.studentAadhaar') },
+    { key: 'fatherAadhaar', name: t('documents.fatherAadhaar') },
+    { key: 'motherAadhaar', name: t('documents.motherAadhaar') },
+    { key: 'rationCard', name: t('documents.rationCard') },
+    { key: 'addressProof', name: t('documents.addressProof') },
+    { key: 'incomeCertificate', name: t('documents.incomeCertificate') },
+    { key: 'casteCertificate', name: t('documents.casteCertificate') },
+    { key: 'passportPhoto', name: t('documents.passportPhoto') },
   ];
 
   // Table Columns Setup
   const columns = [
     {
-      title: 'GR Number',
+      title: t('students.grNumber'),
       dataIndex: 'grNumber',
       key: 'grNumber',
       width: '120px',
       render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>,
     },
     {
-      title: 'Student Name',
+      title: t('students.studentName'),
       dataIndex: 'name',
       key: 'name',
       render: (text, record) => (
         <div>
           <span style={{ fontWeight: 500, color: 'var(--primary-color)' }}>{text}</span>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Gender: {record.gender}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            {t('students.genderLabel', { gender: record.gender })}
+          </div>
         </div>
       ),
     },
     {
-      title: 'Class / Div',
+      title: t('students.classDiv'),
       key: 'classDiv',
       render: (_, record) => `${record.class} - ${record.division}`,
     },
     {
-      title: 'Father Name',
+      title: t('students.fatherName'),
       dataIndex: 'fatherName',
       key: 'fatherName',
     },
     {
-      title: 'Mobile',
+      title: t('students.mobile'),
       dataIndex: 'mobile',
       key: 'mobile',
     },
     {
-      title: 'Documents',
+      title: t('students.documents'),
       key: 'documents',
       render: (_, record) => {
         const count = getUploadedCount(record);
@@ -262,25 +267,25 @@ export const Students = () => {
         return (
           <Tag color={complete ? 'success' : count > 4 ? 'warning' : 'error'}>
             {complete ? <CheckCircleOutlined style={{ marginRight: 4 }} /> : <ExclamationCircleOutlined style={{ marginRight: 4 }} />}
-            {count} / 9 Uploaded
+            {t('students.uploadedCount', { count, total: 9 })}
           </Tag>
         );
       },
     },
     {
-      title: 'Actions',
+      title: t('common.actions'),
       key: 'actions',
       width: '200px',
       render: (_, record) => (
         <Space size="middle">
-          <Tooltip title="View Profiles & Upload Files">
+          <Tooltip title={t('students.viewProfileUpload')}>
             <Button
               type="text"
               icon={<EyeOutlined style={{ color: '#6366f1' }} />}
               onClick={() => handleViewDetails(record._id)}
             />
           </Tooltip>
-          <Tooltip title="Edit Student Profile">
+          <Tooltip title={t('students.editProfile')}>
             <Button
               type="text"
               icon={<EditOutlined style={{ color: '#f59e0b' }} />}
@@ -288,13 +293,13 @@ export const Students = () => {
             />
           </Tooltip>
           <Popconfirm
-            title="Delete student records?"
-            description="This will permanently delete the student and all uploaded documents."
+            title={t('students.deleteStudentTitle')}
+            description={t('students.deleteStudentDescription')}
             onConfirm={() => deleteMutation.mutate(record._id)}
-            okText="Yes"
-            cancelText="No"
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
           >
-            <Tooltip title="Delete Student">
+            <Tooltip title={t('students.deleteStudent')}>
               <Button type="text" icon={<DeleteOutlined style={{ color: '#ef4444' }} />} />
             </Tooltip>
           </Popconfirm>
@@ -309,17 +314,17 @@ export const Students = () => {
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <Title level={2} style={{ margin: 0, fontWeight: 700 }}>
-            Student Directory
+            {t('students.studentDirectory')}
           </Title>
           <Paragraph type="secondary" style={{ margin: 0 }}>
-            Register students, filter profiles, and manage documentation files
+            {t('students.subtitle')}
           </Paragraph>
         </div>
         <div style={{ marginLeft: 'auto' }}>
           <Space>
             {/* Export Dropdown */}
             <Select
-              placeholder="Export Records"
+              placeholder={t('students.exportRecords')}
               dropdownMatchSelectWidth={false}
               suffixIcon={<DownloadOutlined />}
               style={{ width: 160 }}
@@ -330,17 +335,17 @@ export const Students = () => {
             >
               <Option value="excel">
                 <Space>
-                  <FileExcelOutlined style={{ color: '#10b981' }} /> Excel (.xlsx)
+                  <FileExcelOutlined style={{ color: '#10b981' }} /> {t('students.excel')}
                 </Space>
               </Option>
               <Option value="csv">
                 <Space>
-                  <FileTextOutlined style={{ color: '#6366f1' }} /> CSV (.csv)
+                  <FileTextOutlined style={{ color: '#6366f1' }} /> {t('students.csv')}
                 </Space>
               </Option>
               <Option value="pdf">
                 <Space>
-                  <FilePdfOutlined style={{ color: '#ef4444' }} /> PDF Document
+                  <FilePdfOutlined style={{ color: '#ef4444' }} /> {t('students.pdfDocument')}
                 </Space>
               </Option>
             </Select>
@@ -351,7 +356,7 @@ export const Students = () => {
               onClick={() => handleOpenForm()}
               style={{ borderRadius: '8px' }}
             >
-              Add New Student
+              {t('students.addStudent')}
             </Button>
           </Space>
         </div>
@@ -362,7 +367,7 @@ export const Students = () => {
         <Space size="middle" wrap style={{ width: '100%' }}>
           {/* Search Box */}
           <Input
-            placeholder="Search Name or GR No."
+            placeholder={t('students.searchPlaceholder')}
             prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -372,7 +377,7 @@ export const Students = () => {
 
           {/* Class Select */}
           <Select
-            placeholder="Filter by Class"
+            placeholder={t('students.filterByClass')}
             value={selectedClass || undefined}
             onChange={(val) => setSelectedClass(val || '')}
             style={{ width: 160 }}
@@ -387,7 +392,7 @@ export const Students = () => {
 
           {/* Division Select */}
           <Select
-            placeholder="Filter by Div"
+            placeholder={t('students.filterByDivision')}
             value={selectedDiv || undefined}
             onChange={(val) => setSelectedDiv(val || '')}
             style={{ width: 140 }}
@@ -395,23 +400,23 @@ export const Students = () => {
           >
             {divisionList.map((d) => (
               <Option key={d} value={d}>
-                Division {d}
+                {t('students.division')} {d}
               </Option>
             ))}
           </Select>
 
           {/* Missing Document Filter */}
           <Select
-            placeholder="Document Completeness"
+            placeholder={t('students.documentCompleteness')}
             value={missingDocFilter || undefined}
             onChange={(val) => setMissingDocFilter(val || '')}
             style={{ width: 220 }}
             allowClear
           >
-            <Option value="any">Missing ANY Document</Option>
+            <Option value="any">{t('students.missingAnyDocument')}</Option>
             {documentTypes.map((doc) => (
               <Option key={doc.key} value={doc.key}>
-                Missing: {doc.name}
+                {t('students.missingDocument', { document: doc.name })}
               </Option>
             ))}
           </Select>
@@ -426,7 +431,7 @@ export const Students = () => {
                 setMissingDocFilter('');
               }}
             >
-              Clear Filters
+              {t('common.clearFilters')}
             </Button>
           )}
         </Space>
@@ -455,14 +460,14 @@ export const Students = () => {
             <strong>{student.name}</strong>
           </div>
 
-          <div><strong>GR:</strong> {student.grNumber}</div>
-          <div><strong>Class:</strong> {student.class} - {student.division}</div>
-          <div><strong>Father:</strong> {student.fatherName}</div>
-          <div><strong>Mobile:</strong> {student.mobile}</div>
+          <div><strong>{t('students.grShort')}</strong> {student.grNumber}</div>
+          <div><strong>{t('students.classShort')}</strong> {student.class} - {student.division}</div>
+          <div><strong>{t('students.fatherShort')}</strong> {student.fatherName}</div>
+          <div><strong>{t('students.mobileShort')}</strong> {student.mobile}</div>
 
           <div style={{ marginTop: 8 }}>
             <Tag color={getUploadedCount(student) === 9 ? 'success' : 'warning'}>
-              {getUploadedCount(student)} / 9 Uploaded
+              {t('students.uploadedCount', { count: getUploadedCount(student), total: 9 })}
             </Tag>
           </div>
 
@@ -480,7 +485,7 @@ export const Students = () => {
             />
 
             <Popconfirm
-              title="Delete student?"
+              title={t('students.deleteStudentShort')}
               onConfirm={() => deleteMutation.mutate(student._id)}
             >
               <Button
@@ -517,7 +522,7 @@ export const Students = () => {
       {/* 1. Add / Edit Student Profile Modal */}
       {/* ---------------------------------------------------- */}
       <Modal
-        title={editingStudent ? 'Edit Student Details' : 'Register New Student'}
+        title={editingStudent ? t('students.editStudentDetails') : t('students.registerNewStudent')}
         open={formOpen}
         onCancel={() => setFormOpen(false)}
         footer={null}
@@ -527,25 +532,25 @@ export const Students = () => {
         <Form form={form} layout="vertical" onFinish={handleFormSubmit} style={{ marginTop: '20px' }}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <div style={{ fontWeight: 600, color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
-              Academic & Personal Profiles
+              {t('students.academicPersonalProfiles')}
             </div>
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item name="name" label="Student Full Name" rules={[{ required: true, message: 'Name is required' }]}>
-                  <Input placeholder="E.g. Rajesh Kumar" />
+                <Form.Item name="name" label={t('students.studentFullName')} rules={[{ required: true, message: t('students.nameRequired') }]}>
+                  <Input placeholder={t('students.studentNamePlaceholder')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="grNumber" label="GR Number" rules={[{ required: true, message: 'GR Number is required' }]}>
-                  <Input placeholder="E.g. GR10294" disabled={!!editingStudent} />
+                <Form.Item name="grNumber" label={t('students.grNumber')} rules={[{ required: true, message: t('students.grRequired') }]}>
+                  <Input placeholder={t('students.grPlaceholder')} disabled={!!editingStudent} />
                 </Form.Item>
               </Col>
             </Row>
 
             <Row gutter={16}>
               <Col span={8}>
-                <Form.Item name="class" label="Class" rules={[{ required: true, message: 'Class is required' }]}>
-                  <Select placeholder="Select Class">
+                <Form.Item name="class" label={t('students.class')} rules={[{ required: true, message: t('students.classRequired') }]}>
+                  <Select placeholder={t('students.selectClass')}>
                     {classesList.map((c) => (
                       <Option key={c} value={c}>
                         {c}
@@ -555,8 +560,8 @@ export const Students = () => {
                 </Form.Item>
               </Col>
               <Col span={8}>
-                <Form.Item name="division" label="Division" rules={[{ required: true, message: 'Division is required' }]}>
-                  <Select placeholder="Select Division">
+                <Form.Item name="division" label={t('students.division')} rules={[{ required: true, message: t('students.divisionRequired') }]}>
+                  <Select placeholder={t('students.selectDivision')}>
                     {divisionList.map((d) => (
                       <Option key={d} value={d}>
                         {d}
@@ -566,10 +571,10 @@ export const Students = () => {
                 </Form.Item>
               </Col>
               <Col span={8}>
-                <Form.Item name="gender" label="Gender" rules={[{ required: true, message: 'Gender is required' }]}>
+                <Form.Item name="gender" label={t('students.gender')} rules={[{ required: true, message: t('students.genderRequired') }]}>
                   <Radio.Group>
-                    <Radio value="male">Male</Radio>
-                    <Radio value="female">Female</Radio>
+                    <Radio value="male">{t('students.male')}</Radio>
+                    <Radio value="female">{t('students.female')}</Radio>
                   </Radio.Group>
                 </Form.Item>
               </Col>
@@ -577,63 +582,63 @@ export const Students = () => {
 
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, message: 'DOB is required' }]}>
+                <Form.Item name="dob" label={t('students.dob')} rules={[{ required: true, message: t('students.dobRequired') }]}>
                   <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="mobile" label="Mobile Number" rules={[{ required: true, message: 'Mobile is required' }]}>
-                  <Input placeholder="10 Digit Number" maxLength={10} />
+                <Form.Item name="mobile" label={t('students.mobileNumber')} rules={[{ required: true, message: t('students.mobileRequired') }]}>
+                  <Input placeholder={t('students.mobilePlaceholder')} maxLength={10} />
                 </Form.Item>
               </Col>
             </Row>
 
             <div style={{ fontWeight: 600, color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px', marginTop: '10px' }}>
-              Family Details
+              {t('students.familyDetails')}
             </div>
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item name="fatherName" label="Father Full Name" rules={[{ required: true, message: 'Father Name is required' }]}>
-                  <Input placeholder="Father Name" />
+                <Form.Item name="fatherName" label={t('students.fatherFullName')} rules={[{ required: true, message: t('students.fatherRequired') }]}>
+                  <Input placeholder={t('students.fatherName')} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="motherName" label="Mother Full Name" rules={[{ required: true, message: 'Mother Name is required' }]}>
-                  <Input placeholder="Mother Name" />
+                <Form.Item name="motherName" label={t('students.motherFullName')} rules={[{ required: true, message: t('students.motherRequired') }]}>
+                  <Input placeholder={t('students.motherName')} />
                 </Form.Item>
               </Col>
             </Row>
 
             <div style={{ fontWeight: 600, color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px', marginTop: '10px' }}>
-              Residential Address
+              {t('students.residentialAddress')}
             </div>
-            <Form.Item name="address" label="Detailed Address" rules={[{ required: true, message: 'Address is required' }]}>
-              <Input.TextArea rows={2} placeholder="House no, Society Name, Street address" />
+            <Form.Item name="address" label={t('students.detailedAddress')} rules={[{ required: true, message: t('students.addressRequired') }]}>
+              <Input.TextArea rows={2} placeholder={t('students.addressPlaceholder')} />
             </Form.Item>
 
             <Row gutter={16}>
               <Col span={8}>
-                <Form.Item name="village" label="Village">
-                  <Input placeholder="Village" />
+                <Form.Item name="village" label={t('students.village')}>
+                  <Input placeholder={t('students.village')} />
                 </Form.Item>
               </Col>
               <Col span={8}>
-                <Form.Item name="taluka" label="Taluka/Subdistrict">
-                  <Input placeholder="Taluka" />
+                <Form.Item name="taluka" label={t('students.taluka')}>
+                  <Input placeholder={t('students.taluka')} />
                 </Form.Item>
               </Col>
               <Col span={8}>
-                <Form.Item name="district" label="District">
-                  <Input placeholder="District" />
+                <Form.Item name="district" label={t('students.district')}>
+                  <Input placeholder={t('students.district')} />
                 </Form.Item>
               </Col>
             </Row>
 
             <Form.Item style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', marginBottom: 0 }}>
               <Space>
-                <Button onClick={() => setFormOpen(false)}>Cancel</Button>
+                <Button onClick={() => setFormOpen(false)}>{t('common.cancel')}</Button>
                 <Button type="primary" htmlType="submit">
-                  {editingStudent ? 'Save Records' : 'Register Student'}
+                  {editingStudent ? t('students.saveRecords') : t('students.registerStudent')}
                 </Button>
               </Space>
             </Form.Item>
@@ -645,7 +650,7 @@ export const Students = () => {
       {/* 2. Detailed Profile & Document Management Pane Modal */}
       {/* ---------------------------------------------------- */}
       <Modal
-        title="Student Portfolio & File Vault"
+        title={t('students.portfolioTitle')}
         open={detailOpen}
         onCancel={() => {
           setDetailOpen(false);
@@ -653,7 +658,7 @@ export const Students = () => {
         }}
         footer={[
           <Button key="close" onClick={() => { setDetailOpen(false); setViewingStudentId(null); }}>
-            Close Vault
+            {t('students.closeVault')}
           </Button>,
         ]}
         width={850}
@@ -661,35 +666,35 @@ export const Students = () => {
       >
         {detailsLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-            <Spin size="large" tip="Retrieving profile folder..." />
+            <Spin size="large" tip={t('students.retrievingProfile')} />
           </div>
         ) : (
           (() => {
             const student = studentDetailData?.data;
-            if (!student) return <div>Failed to load profile.</div>;
+            if (!student) return <div>{t('students.failedProfile')}</div>;
             return (
               <div style={{ marginTop: '16px' }}>
                 {/* Profile Meta Cards */}
-                <Descriptions title="Student Bio" bordered size="small" column={2}>
-                  <Descriptions.Item label="Name" span={2}>
+                <Descriptions title={t('students.studentBio')} bordered size="small" column={2}>
+                  <Descriptions.Item label={t('students.name')} span={2}>
                     <span style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{student.name}</span>
                   </Descriptions.Item>
-                  <Descriptions.Item label="GR Number">{student.grNumber}</Descriptions.Item>
-                  <Descriptions.Item label="Class & Div">{student.class} - {student.division}</Descriptions.Item>
-                  <Descriptions.Item label="DOB">
+                  <Descriptions.Item label={t('students.grNumber')}>{student.grNumber}</Descriptions.Item>
+                  <Descriptions.Item label={t('students.classAndDiv')}>{student.class} - {student.division}</Descriptions.Item>
+                  <Descriptions.Item label={t('students.dob')}>
                     {student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : '-'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Gender" style={{ textTransform: 'capitalize' }}>
+                  <Descriptions.Item label={t('students.gender')} style={{ textTransform: 'capitalize' }}>
                     {student.gender}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Father Name">{student.fatherName}</Descriptions.Item>
-                  <Descriptions.Item label="Mother Name">{student.motherName}</Descriptions.Item>
-                  <Descriptions.Item label="Contact Mobile">{student.mobile}</Descriptions.Item>
-                  <Descriptions.Item label="Registered Address" span={2}>
+                  <Descriptions.Item label={t('students.fatherName')}>{student.fatherName}</Descriptions.Item>
+                  <Descriptions.Item label={t('students.motherName')}>{student.motherName}</Descriptions.Item>
+                  <Descriptions.Item label={t('students.contactMobile')}>{student.mobile}</Descriptions.Item>
+                  <Descriptions.Item label={t('students.registeredAddress')} span={2}>
                     {student.address}
-                    {student.village && `, Village: ${student.village}`}
-                    {student.taluka && `, Taluka: ${student.taluka}`}
-                    {student.district && `, Dist: ${student.district}`}
+                    {student.village && `, ${t('students.villageInline', { value: student.village })}`}
+                    {student.taluka && `, ${t('students.talukaInline', { value: student.taluka })}`}
+                    {student.district && `, ${t('students.districtInline', { value: student.district })}`}
                   </Descriptions.Item>
                 </Descriptions>
 
@@ -708,10 +713,10 @@ export const Students = () => {
                       alignItems: 'center',
                     }}
                   >
-                    <span>Verification Folders ({getUploadedCount(student)} / 9 Completed)</span>
+                    <span>{t('students.verificationFolders', { count: getUploadedCount(student), total: 9 })}</span>
                     <Badge
                       status={getUploadedCount(student) === 9 ? 'success' : 'processing'}
-                      text={getUploadedCount(student) === 9 ? 'Verifications Complete' : 'Pending Uploads'}
+                      text={getUploadedCount(student) === 9 ? t('students.verificationsComplete') : t('students.pendingUploads')}
                     />
                   </div>
 
@@ -754,7 +759,7 @@ export const Students = () => {
     icon={<EyeOutlined />}
     onClick={() => window.open(docRecord.url, '_blank')}
   >
-    View
+    {t('common.view')}
   </Button>
 
   <Button
@@ -769,15 +774,15 @@ export const Students = () => {
       window.open(downloadUrl, '_blank');
     }}
   >
-    Download
+    {t('common.download')}
   </Button>
 </Space>
 
                                   <Popconfirm
-                                    title="Remove this file?"
+                                    title={t('students.removeFileTitle')}
                                     onConfirm={() => deleteDocMutation.mutate({ studentId: student._id, docType: doc.key })}
-                                    okText="Yes"
-                                    cancelText="No"
+                                    okText={t('common.yes')}
+                                    cancelText={t('common.no')}
                                   >
                                     <Button
                                       type="text"
@@ -802,11 +807,11 @@ export const Students = () => {
                                     loading={uploadingDoc[doc.key]}
                                     style={{ fontSize: 12 }}
                                   >
-                                    Upload File
+                                    {t('students.uploadFile')}
                                   </Button>
                                 </Upload>
                                 <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
-                                  PDF or Images (Max 5MB)
+                                  {t('students.uploadHint')}
                                 </span>
                               </div>
                             )}

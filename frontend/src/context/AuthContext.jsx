@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import client from '../api/client';
 import { message } from 'antd';
+import i18n from '../i18n';
 
 const AuthContext = createContext(null);
 
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
         setUser(response.user);
-        message.success(`Welcome back, ${response.user.name}!`);
+        message.success(i18n.t('auth.welcomeUser', { name: response.user.name }));
         return response.user;
       }
     } catch (error) {
@@ -64,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    message.success('Logged out successfully.');
+    message.success(i18n.t('auth.loggedOut'));
   };
 
   const value = {
