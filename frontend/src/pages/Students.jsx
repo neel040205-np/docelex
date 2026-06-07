@@ -39,6 +39,9 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { Grid } from 'antd';
+
+const { useBreakpoint } = Grid;
 
 const { Option } = Select;
 const { Title, Paragraph } = Typography;
@@ -46,6 +49,9 @@ const { Title, Paragraph } = Typography;
 export const Students = () => {
   const queryClient = useQueryClient();
   const isDarkMode = document.body.classList.contains('dark-theme');
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
   
   // Search & Filters State
   const [search, setSearch] = useState('');
@@ -427,24 +433,85 @@ export const Students = () => {
       </Card>
 
       {/* Main Student Directory Table */}
-      <Card bordered={false} style={{ boxShadow: 'var(--shadow-premium)', background: 'var(--bg-card)' }}>
-        <Table
-          columns={columns}
-          dataSource={studentsData?.data || []}
-          rowKey="_id"
-          loading={isLoading}
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: studentsData?.pagination?.total || 0,
-            showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-            },
+      <Card
+  bordered={false}
+  style={{
+    boxShadow: 'var(--shadow-premium)',
+    background: 'var(--bg-card)',
+  }}
+>
+  {isMobile ? (
+    <div>
+      {(studentsData?.data || []).map((student) => (
+        <Card
+          key={student._id}
+          size="small"
+          style={{
+            marginBottom: 12,
+            borderRadius: 12,
           }}
-        />
-      </Card>
+        >
+          <div style={{ marginBottom: 8 }}>
+            <strong>{student.name}</strong>
+          </div>
+
+          <div><strong>GR:</strong> {student.grNumber}</div>
+          <div><strong>Class:</strong> {student.class} - {student.division}</div>
+          <div><strong>Father:</strong> {student.fatherName}</div>
+          <div><strong>Mobile:</strong> {student.mobile}</div>
+
+          <div style={{ marginTop: 8 }}>
+            <Tag color={getUploadedCount(student) === 9 ? 'success' : 'warning'}>
+              {getUploadedCount(student)} / 9 Uploaded
+            </Tag>
+          </div>
+
+          <Space style={{ marginTop: 10 }}>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewDetails(student._id)}
+            />
+
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleOpenForm(student)}
+            />
+
+            <Popconfirm
+              title="Delete student?"
+              onConfirm={() => deleteMutation.mutate(student._id)}
+            >
+              <Button
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+              />
+            </Popconfirm>
+          </Space>
+        </Card>
+      ))}
+    </div>
+  ) : (
+    <Table
+      columns={columns}
+      dataSource={studentsData?.data || []}
+      rowKey="_id"
+      loading={isLoading}
+      pagination={{
+        current: page,
+        pageSize: pageSize,
+        total: studentsData?.pagination?.total || 0,
+        showSizeChanger: true,
+        onChange: (p, ps) => {
+          setPage(p);
+          setPageSize(ps);
+        },
+      }}
+    />
+  )}
+</Card>
 
       {/* ---------------------------------------------------- */}
       {/* 1. Add / Edit Student Profile Modal */}
