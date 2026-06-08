@@ -696,7 +696,7 @@ export const StudentList = () => {
       >
         <div style={{ padding: '12px 0' }}>
           <Paragraph>
-            Upload a spreadsheet (<strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong>) to automatically register new students or bulk-update existing details using matching <strong>SR Number</strong> or <strong>GR Number</strong>.
+            Upload a spreadsheet (<strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong>) to automatically register new students or bulk-update existing details using matching <strong>SR</strong> or <strong>GR</strong>.
           </Paragraph>
 
           <Upload.Dragger {...uploadProps} style={{ padding: '20px', background: 'var(--bg-card)', border: '2px dashed var(--border-color)' }}>
@@ -753,12 +753,12 @@ export const StudentList = () => {
           <div style={{ marginTop: '16px', background: 'var(--bg-body, #f5f5f5)', padding: '16px', borderRadius: '8px' }}>
             <Title level={5} style={{ marginTop: 0, fontSize: '14px' }}>Column Mapping Guide</Title>
             <Paragraph style={{ fontSize: '13px', marginBottom: '8px' }}>
-              The importer automatically maps headers based on spelling. Ensure either <strong>SR Number</strong> or <strong>GR Number</strong> is present in each row.
+              The importer automatically maps headers based on spelling. Ensure either <strong>SR</strong> or <strong>GR</strong> is present in each row.
             </Paragraph>
             <div style={{ maxHeight: '150px', overflowY: 'auto', fontSize: '12px' }}>
               <ul style={{ paddingLeft: '20px', margin: 0, lineHeight: '1.6' }}>
-                <li><strong>SR Number:</strong> "SR Number", "srno", "sr_no"</li>
-                <li><strong>GR Number:</strong> "GR Number", "grno", "gr_no"</li>
+                <li><strong>SR:</strong> "SR", "SR Number", "srno", "sr_no"</li>
+                <li><strong>GR:</strong> "GR", "GR Number", "grno", "gr_no"</li>
                 <li><strong>Basic Info:</strong> "First Name", "Surname", "Father Name", "Mother Name", "Gender", "DOB" / "Date of Birth"</li>
                 <li><strong>School Info:</strong> "Class", "Division", "Admission Date"</li>
                 <li><strong>Aadhaar:</strong> "Aadhaar Number", "Name as per Aadhaar", "DOB as per Aadhaar"</li>

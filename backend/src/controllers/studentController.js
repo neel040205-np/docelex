@@ -1092,6 +1092,8 @@ exports.importStudents = async (req, res) => {
     };
 
     const FIELD_MAP = {
+      sr: 'srNumber',
+      gr: 'grNumber',
       srnumber: 'srNumber',
       srno: 'srNumber',
       grnumber: 'grNumber',
@@ -1203,7 +1205,7 @@ exports.importStudents = async (req, res) => {
         if (data.grNumber) matchCriteria.push({ grNumber: data.grNumber });
 
         if (matchCriteria.length === 0) {
-          throw new Error('Missing SR Number and GR Number');
+          throw new Error('Missing SR/GR');
         }
 
         // Value Normalization
