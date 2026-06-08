@@ -383,9 +383,8 @@ export const StudentDetails = () => {
           <Button
             icon={<DownloadOutlined />}
             onClick={() => {
-              const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
               window.open(
-                `${baseUrl}/students/${student._id}/download-documents?token=${localStorage.getItem('token')}`,
+                `${client.defaults.baseURL}/students/${student._id}/download-documents?token=${localStorage.getItem('token')}`,
                 '_blank'
               );
             }}

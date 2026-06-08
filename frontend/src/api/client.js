@@ -2,8 +2,19 @@ import axios from 'axios';
 import { message } from 'antd';
 import i18n from '../i18n';
 
+let apiBaseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
+
+// Normalize the URL to ensure it always ends with '/api'
+if (apiBaseUrl && !apiBaseUrl.endsWith('/api') && !apiBaseUrl.endsWith('/api/')) {
+  if (apiBaseUrl.endsWith('/')) {
+    apiBaseUrl += 'api';
+  } else {
+    apiBaseUrl += '/api';
+  }
+}
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api',
+  baseURL: apiBaseUrl,
 });
 
 // Request Interceptor: Attach JWT Token automatically

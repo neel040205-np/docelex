@@ -537,8 +537,7 @@ export const Students = () => {
               style={{ width: isMobile ? 140 : 160 }}
               onChange={(val) => {
                 if (!val) return;
-                const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
-                window.open(`${baseUrl}/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
+                window.open(`${client.defaults.baseURL}/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
               }}
             >
               <Option value="excel">
@@ -1012,8 +1011,7 @@ export const Students = () => {
                 icon={<DownloadOutlined />}
                 size="small"
                 onClick={() => {
-                  const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
-                  window.open(`${baseUrl}/students/${viewingStudentId}/download-documents?token=${localStorage.getItem('token')}`, '_blank');
+                  window.open(`${client.defaults.baseURL}/students/${viewingStudentId}/download-documents?token=${localStorage.getItem('token')}`, '_blank');
                 }}
                 style={{ borderRadius: '6px' }}
               >

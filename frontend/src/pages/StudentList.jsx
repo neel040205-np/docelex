@@ -272,8 +272,7 @@ export const StudentList = () => {
               style={{ width: isMobile ? 140 : 160 }}
               onChange={(val) => {
                 if (!val) return;
-                const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
-                window.open(`${baseUrl}/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
+                window.open(`${client.defaults.baseURL}/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
               }}
             >
               <Option value="excel">
