@@ -931,7 +931,7 @@ export const Students = () => {
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              minHeight: '120px',
+                              minHeight: '140px',
                               height: '100%',
                             }}
                           >
@@ -992,20 +992,34 @@ export const Students = () => {
                                 </Space>
                               </div>
                             ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', flex: 1, height: '100%' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', flex: 1, height: '100%', gap: '6px', width: '100%' }}>
+                                <Upload
+                                  beforeUpload={(file) => handleDocumentUpload(file, doc.key)}
+                                  showUploadList={false}
+                                  maxCount={1}
+                                  accept=".pdf,image/*"
+                                  style={{ width: '100%', display: 'block' }}
+                                >
+                                  <Button
+                                    type="dashed"
+                                    size="small"
+                                    icon={<UploadOutlined />}
+                                    loading={uploadingDoc[doc.key]}
+                                    style={{ fontSize: 11, width: '100%' }}
+                                  >
+                                    {t('students.uploadFromComputer', 'Upload from Device')}
+                                  </Button>
+                                </Upload>
+
                                 <Button
                                   type="dashed"
                                   size="small"
                                   icon={<GoogleOutlined style={{ color: '#4285F4' }} />}
-                                  loading={uploadingDoc[doc.key]}
-                                  style={{ fontSize: 12 }}
                                   onClick={() => handleOpenDriveModal(doc.key)}
+                                  style={{ fontSize: 11, width: '100%' }}
                                 >
-                                  {t('students.uploadFile', 'Upload File')}
+                                  {t('students.uploadFromDrive', 'Upload Google Drive Link')}
                                 </Button>
-                                <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
-                                  {t('students.uploadHint')}
-                                </span>
                               </div>
                             )}
                           </Card>
