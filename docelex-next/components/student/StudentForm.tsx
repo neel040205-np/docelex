@@ -1,7 +1,7 @@
 'use strict';
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -19,12 +19,24 @@ import {
   ArrowLeft, 
   CheckCircle2, 
   AlertCircle,
-  Loader2
+  Loader2,
+  Upload,
+  Camera,
+  Link2,
+  Eye,
+  Trash2,
+  RotateCcw,
+  FileText,
+  Clock,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface StudentFormProps {
   initialValues?: Partial<StudentFormValues> & { _id?: string };
+  initialDocuments?: any[];
   isEditMode?: boolean;
 }
 
@@ -37,11 +49,216 @@ interface TabItem {
   fields: (keyof StudentFormValues)[];
 }
 
-export function StudentForm({ initialValues, isEditMode = false }: StudentFormProps) {
+export function StudentForm({ initialValues, initialDocuments = [], isEditMode = false }: StudentFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('basic');
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState<string | null>(null);
+
+  // Existing documents
+  const initialAadhaarDoc = initialDocuments?.find((d) => d.documentType === 'studentAadhaar');
+  const initialBankDoc = initialDocuments?.find((d) => d.documentType === 'studentBankPassbook');
+
+  const [changeAadhaar, setChangeAadhaar] = useState(false);
+  const [changeBank, setChangeBank] = useState(false);
+
+  // Document Upload States
+  const [aadhaarUpload, setAadhaarUpload] = useState<{
+    source: 'device' | 'camera' | 'drive';
+    file?: File;
+    cameraDataUrl?: string;
+    driveUrl?: string;
+    fileName?: string;
+  } | null>(null);
+
+  const [bankPassbookUpload, setBankPassbookUpload] = useState<{
+    source: 'device' | 'camera' | 'drive';
+    file?: File;
+    cameraDataUrl?: string;
+    driveUrl?: string;
+    fileName?: string;
+  } | null>(null);
+
+  // Reusable Modals States
+  const [activeUploadDoc, setActiveUploadDoc] = useState<'aadhaar' | 'bank' | null>(null);
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [driveModalOpen, setDriveModalOpen] = useState(false);
+  const [driveUrl, setDriveUrl] = useState('');
+  const [driveFileName, setDriveFileName] = useState('');
+
+  // Camera preview states inside dialog (for preview before upload in form)
+  const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const startCamera = async (docType: 'aadhaar' | 'bank') => {
+    setActiveUploadDoc(docType);
+    setCapturedPhotoUrl(null);
+    setCameraModalOpen(true);
+    try {
+      setTimeout(async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        setCameraStream(stream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 150);
+    } catch (err: any) {
+      setCameraModalOpen(false);
+      alert('Unable to access device camera. Please check browser permissions.');
+      console.error(err);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setCameraModalOpen(false);
+    setCapturedPhotoUrl(null);
+  };
+
+  const captureSnapshot = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const base64Data = canvas.toDataURL('image/jpeg');
+    setCapturedPhotoUrl(base64Data);
+
+    // Stop camera stream since we captured the picture
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const retakePhoto = async () => {
+    setCapturedPhotoUrl(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const confirmPhoto = () => {
+    if (!capturedPhotoUrl) return;
+    const payload = { source: 'camera' as const, cameraDataUrl: capturedPhotoUrl };
+    if (activeUploadDoc === 'aadhaar') {
+      setAadhaarUpload(payload);
+    } else {
+      setBankPassbookUpload(payload);
+    }
+    stopCamera();
+  };
+
+  const triggerDriveLink = (docType: 'aadhaar' | 'bank') => {
+    setActiveUploadDoc(docType);
+    setDriveUrl('');
+    setDriveFileName('');
+    setDriveModalOpen(true);
+  };
+
+  const submitDriveLink = () => {
+    if (!driveUrl) {
+      alert('Google Drive Link is required.');
+      return;
+    }
+    if (!driveUrl.startsWith('https://')) {
+      alert('Please enter a secure Google Drive link starting with https://');
+      return;
+    }
+
+    const payload = {
+      source: 'drive' as const,
+      driveUrl,
+      fileName: driveFileName || (activeUploadDoc === 'aadhaar' ? 'Aadhaar_Card_Link.pdf' : 'Bank_Passbook_Link.pdf')
+    };
+
+    if (activeUploadDoc === 'aadhaar') {
+      setAadhaarUpload(payload);
+    } else {
+      setBankPassbookUpload(payload);
+    }
+    setDriveModalOpen(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, docType: 'aadhaar' | 'bank') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size exceeds the 10MB limit.');
+      return;
+    }
+
+    const payload = { source: 'device' as const, file };
+    if (docType === 'aadhaar') {
+      setAadhaarUpload(payload);
+    } else {
+      setBankPassbookUpload(payload);
+    }
+  };
+
+  const uploadDocument = async (studentId: string, docType: string, uploadState: any) => {
+    if (!uploadState) return;
+
+    const url = `/api/students/${studentId}/documents/${docType}`;
+
+    if (uploadState.source === 'device') {
+      const formData = new FormData();
+      formData.append('file', uploadState.file);
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || `Failed to upload ${docType}`);
+      }
+    } else if (uploadState.source === 'camera') {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cameraDataUrl: uploadState.cameraDataUrl }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || `Failed to upload ${docType}`);
+      }
+    } else if (uploadState.source === 'drive') {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driveUrl: uploadState.driveUrl, fileName: uploadState.fileName }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || `Failed to upload ${docType}`);
+      }
+    }
+  };
 
   // Format initial date values to YYYY-MM-DD for HTML5 date inputs
   const formatInitialDate = (dateVal: any) => {
@@ -149,6 +366,7 @@ export function StudentForm({ initialValues, isEditMode = false }: StudentFormPr
   const onSubmit = async (data: StudentFormValues) => {
     setIsSubmitting(true);
     setServerError(null);
+    setSubmitProgress('Saving student master profile...');
 
     const url = isEditMode
       ? `/api/students/${initialValues?._id}`
@@ -168,8 +386,21 @@ export function StudentForm({ initialValues, isEditMode = false }: StudentFormPr
         throw new Error(result.message || 'Operation failed');
       }
 
-      // Redirect to profile page on successful registration or edit
       const studentId = isEditMode ? initialValues?._id : result.data._id;
+
+      // Handle Aadhaar upload if selected
+      if (aadhaarUpload) {
+        setSubmitProgress('Uploading Aadhaar Card document...');
+        await uploadDocument(studentId, 'studentAadhaar', aadhaarUpload);
+      }
+
+      // Handle Bank Passbook upload if selected
+      if (bankPassbookUpload) {
+        setSubmitProgress('Uploading Student Bank Passbook...');
+        await uploadDocument(studentId, 'studentBankPassbook', bankPassbookUpload);
+      }
+
+      setSubmitProgress('Done! Redirecting...');
       router.push(`/students/${studentId}`);
       router.refresh();
     } catch (err: any) {
@@ -177,6 +408,7 @@ export function StudentForm({ initialValues, isEditMode = false }: StudentFormPr
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
+      setSubmitProgress(null);
     }
   };
 
@@ -389,6 +621,100 @@ export function StudentForm({ initialValues, isEditMode = false }: StudentFormPr
                 <Input id="dobAsPerAadhaar" type="date" {...register('dobAsPerAadhaar')} className={errors.dobAsPerAadhaar ? 'border-destructive focus-visible:ring-destructive' : ''} />
                 {errors.dobAsPerAadhaar && <p className="text-[11px] font-medium text-destructive">{errors.dobAsPerAadhaar.message}</p>}
               </div>
+
+              {/* Aadhaar Upload block */}
+              <div className="md:col-span-3 border border-border/85 rounded-xl p-5 bg-slate-50/20 space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Aadhaar Document Upload</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Please provide a PDF or Image scan of the student's Aadhaar Card.</p>
+                </div>
+
+                {initialAadhaarDoc && !changeAadhaar ? (
+                  <div className="flex items-center justify-between border border-emerald-100 bg-emerald-50/30 dark:bg-emerald-950/10 dark:border-emerald-900/30 p-4 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Existing Aadhaar Document</p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{initialAadhaarDoc.publicId}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a href={initialAadhaarDoc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-accent hover:text-accent-foreground px-3 text-xs font-semibold cursor-pointer">
+                        View
+                      </a>
+                      <button type="button" onClick={() => setChangeAadhaar(true)} className="inline-flex h-8 items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 text-xs font-semibold cursor-pointer border border-rose-100 dark:border-rose-900/50">
+                        Change File
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {aadhaarUpload ? (
+                      <div className="flex items-center justify-between border border-dashed border-primary/40 bg-primary/5 p-4 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {aadhaarUpload.source === 'device' ? aadhaarUpload.file?.name : aadhaarUpload.source === 'camera' ? 'Captured Webcam Image' : aadhaarUpload.fileName}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 capitalize">
+                              Source: {aadhaarUpload.source} {aadhaarUpload.file && `(${Math.round(aadhaarUpload.file.size / 1024)} KB)`}
+                            </p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setAadhaarUpload(null)} className="inline-flex h-8 items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 text-xs font-semibold cursor-pointer">
+                          Clear
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveUploadDoc('aadhaar');
+                            const fileInput = document.getElementById('aadhaarFileInput');
+                            fileInput?.click();
+                          }}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold px-3.5 cursor-pointer shadow-xs transition-colors"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Upload File
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => startCamera('aadhaar')}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground text-xs font-semibold px-3 cursor-pointer transition-colors"
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                          Webcam Capture
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => triggerDriveLink('aadhaar')}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground text-xs font-semibold px-3 cursor-pointer transition-colors"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                          Google Drive Link
+                        </button>
+
+                        <input
+                          type="file"
+                          id="aadhaarFileInput"
+                          className="hidden"
+                          accept=".pdf,image/*"
+                          onChange={(e) => handleFileChange(e, 'aadhaar')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -417,6 +743,100 @@ export function StudentForm({ initialValues, isEditMode = false }: StudentFormPr
                 <Label htmlFor="accountHolderName" className="font-semibold text-xs text-muted-foreground">Account Holder Name <span className="text-destructive">*</span></Label>
                 <Input id="accountHolderName" placeholder="Beneficiary name" {...register('accountHolderName')} className={errors.accountHolderName ? 'border-destructive focus-visible:ring-destructive' : ''} />
                 {errors.accountHolderName && <p className="text-[11px] font-medium text-destructive">{errors.accountHolderName.message}</p>}
+              </div>
+
+              {/* Bank Passbook Upload block */}
+              <div className="md:col-span-3 border border-border/85 rounded-xl p-5 bg-slate-50/20 space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Bank Passbook Document Upload</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Please provide a PDF or Image scan of the student's Bank Passbook.</p>
+                </div>
+
+                {initialBankDoc && !changeBank ? (
+                  <div className="flex items-center justify-between border border-emerald-100 bg-emerald-50/30 dark:bg-emerald-950/10 dark:border-emerald-900/30 p-4 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Existing Bank Passbook Document</p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{initialBankDoc.publicId}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a href={initialBankDoc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-accent hover:text-accent-foreground px-3 text-xs font-semibold cursor-pointer">
+                        View
+                      </a>
+                      <button type="button" onClick={() => setChangeBank(true)} className="inline-flex h-8 items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 text-xs font-semibold cursor-pointer border border-rose-100 dark:border-rose-900/50">
+                        Change File
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bankPassbookUpload ? (
+                      <div className="flex items-center justify-between border border-dashed border-primary/40 bg-primary/5 p-4 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {bankPassbookUpload.source === 'device' ? bankPassbookUpload.file?.name : bankPassbookUpload.source === 'camera' ? 'Captured Webcam Image' : bankPassbookUpload.fileName}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 capitalize">
+                              Source: {bankPassbookUpload.source} {bankPassbookUpload.file && `(${Math.round(bankPassbookUpload.file.size / 1024)} KB)`}
+                            </p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setBankPassbookUpload(null)} className="inline-flex h-8 items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 text-xs font-semibold cursor-pointer">
+                          Clear
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveUploadDoc('bank');
+                            const fileInput = document.getElementById('bankFileInput');
+                            fileInput?.click();
+                          }}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold px-3.5 cursor-pointer shadow-xs transition-colors"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Upload File
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => startCamera('bank')}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground text-xs font-semibold px-3 cursor-pointer transition-colors"
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                          Webcam Capture
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => triggerDriveLink('bank')}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground text-xs font-semibold px-3 cursor-pointer transition-colors"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                          Google Drive Link
+                        </button>
+
+                        <input
+                          type="file"
+                          id="bankFileInput"
+                          className="hidden"
+                          accept=".pdf,image/*"
+                          onChange={(e) => handleFileChange(e, 'bank')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -499,6 +919,143 @@ export function StudentForm({ initialValues, isEditMode = false }: StudentFormPr
           )}
         </div>
       </form>
+
+      {/* Webcam Scanner Modal */}
+      <Dialog open={cameraModalOpen} onOpenChange={(open) => { if (!open) stopCamera(); }}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden bg-zinc-950 flex flex-col h-[70vh]">
+          <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10 flex items-center justify-between text-white">
+            <div>
+              <DialogTitle className="font-bold text-sm">Webcam Document Scanner</DialogTitle>
+              <DialogDescription className="text-[10px] text-zinc-400">
+                Align document inside camera frame
+              </DialogDescription>
+            </div>
+            <button 
+              type="button"
+              onClick={stopCamera}
+              className="h-8 w-8 rounded-full bg-zinc-900/80 flex items-center justify-center hover:bg-zinc-800 transition-colors cursor-pointer text-white"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-zinc-950">
+            {capturedPhotoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={capturedPhotoUrl}
+                alt="Captured document snapshot preview"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <>
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <canvas ref={canvasRef} className="hidden" />
+
+                <div className="absolute inset-8 border-2 border-dashed border-primary/50 rounded-lg pointer-events-none flex items-center justify-center">
+                  <span className="text-[10px] bg-black/60 text-white/80 px-3 py-1 rounded-full uppercase tracking-wider font-semibold border border-white/10">
+                    Document Overlay Guide
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="bg-black p-5 flex justify-center items-center gap-4 border-t border-zinc-900 z-10">
+            {capturedPhotoUrl ? (
+              <>
+                <button
+                  type="button"
+                  onClick={retakePhoto}
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 text-xs font-semibold text-zinc-200 cursor-pointer"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Retake Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmPhoto}
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-500 px-5 text-xs font-semibold text-white cursor-pointer shadow-xs"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  Confirm Photo
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={captureSnapshot}
+                className="h-14 w-14 rounded-full border-4 border-white bg-red-655 flex items-center justify-center hover:bg-red-700 active:scale-95 transition-all shadow-md cursor-pointer"
+                title="Capture Image"
+              >
+                <span className="h-4 w-4 bg-white rounded-full"></span>
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Google Drive Link Modal */}
+      <Dialog open={driveModalOpen} onOpenChange={setDriveModalOpen}>
+        <DialogContent className="max-w-md bg-card text-card-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-bold">Google Drive Upload</DialogTitle>
+            <DialogDescription>
+              Link a shareable Google Drive file directly. Make sure the file sharing setting is set to **"Anyone with the link can view"**.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="driveUrl" className="font-semibold text-xs text-muted-foreground">Google Drive Link <span className="text-destructive">*</span></Label>
+              <Input
+                id="driveUrl"
+                placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
+                value={driveUrl}
+                onChange={(e) => setDriveUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="driveFileName" className="font-semibold text-xs text-muted-foreground">Display Name</Label>
+              <Input
+                id="driveFileName"
+                placeholder={activeUploadDoc === 'aadhaar' ? 'Aadhaar_Card_Link.pdf' : 'Bank_Passbook_Link.pdf'}
+                value={driveFileName}
+                onChange={(e) => setDriveFileName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setDriveModalOpen(false)}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-border hover:bg-accent px-4 py-2 text-xs font-semibold text-muted-foreground cursor-pointer transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submitDriveLink}
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold px-4 py-2 cursor-pointer shadow-xs transition-colors"
+            >
+              Confirm Link
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit Progress Overlay */}
+      {submitProgress && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center gap-4 text-white p-6">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="font-bold text-sm tracking-wide animate-pulse">{submitProgress}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { ChevronRight, Users, Loader2 } from 'lucide-react';
 export default function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [student, setStudent] = useState<any>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
         const result = await res.json();
         if (res.ok && result.success) {
           setStudent(result.data.student);
+          setDocuments(result.data.documents || []);
         }
       } catch (err) {
         console.error('Error fetching student for edit:', err);
@@ -74,7 +76,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Form Container */}
-      <StudentForm initialValues={student} isEditMode={true} />
+      <StudentForm initialValues={student} initialDocuments={documents} isEditMode={true} />
     </div>
   );
 }

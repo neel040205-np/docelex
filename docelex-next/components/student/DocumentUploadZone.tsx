@@ -53,6 +53,11 @@ export function DocumentUploadZone({
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Preview before upload states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+  const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
+
   // Drive URL Modal state
   const [driveModalOpen, setDriveModalOpen] = useState(false);
   const [driveUrl, setDriveUrl] = useState('');
@@ -94,7 +99,7 @@ export function DocumentUploadZone({
   const statusInfo = getStatusDisplay(existingDocument?.status);
 
   // Handle Standard Device File upload
-  const handleDeviceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeviceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -104,11 +109,26 @@ export function DocumentUploadZone({
       return;
     }
 
+    setErrorMessage(null);
+    setSelectedFile(file);
+
+    // Create local URL for previewing image files
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setLocalPreviewUrl(url);
+    } else {
+      setLocalPreviewUrl(null);
+    }
+  };
+
+  const confirmDeviceUpload = async () => {
+    if (!selectedFile) return;
+
     setIsUploading(true);
     setErrorMessage(null);
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', selectedFile);
 
     try {
       const res = await fetch(`/api/students/${studentId}/documents/${documentType}`, {
@@ -121,12 +141,26 @@ export function DocumentUploadZone({
         throw new Error(data.message || 'Failed to upload document');
       }
 
+      // Cleanup
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+      setSelectedFile(null);
+      setLocalPreviewUrl(null);
       onUploadSuccess();
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to upload file');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const cancelDeviceUpload = () => {
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+    setSelectedFile(null);
+    setLocalPreviewUrl(null);
   };
 
   // Google Drive URL Upload
@@ -172,6 +206,7 @@ export function DocumentUploadZone({
   // Camera Capturing functions
   const startCamera = async () => {
     setErrorMessage(null);
+    setCapturedPhotoUrl(null);
     setCameraModalOpen(true);
     try {
       // Small timeout to allow video tag to mount in DOM
@@ -198,9 +233,10 @@ export function DocumentUploadZone({
       setCameraStream(null);
     }
     setCameraModalOpen(false);
+    setCapturedPhotoUrl(null);
   };
 
-  const captureSnapshot = async () => {
+  const captureSnapshot = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
@@ -214,9 +250,35 @@ export function DocumentUploadZone({
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const base64Data = canvas.toDataURL('image/jpeg');
-    stopCamera();
+    setCapturedPhotoUrl(base64Data);
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const retakePhoto = async () => {
+    setCapturedPhotoUrl(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const confirmCameraUpload = async () => {
+    if (!capturedPhotoUrl) return;
 
     setIsUploading(true);
+    setCameraModalOpen(false);
     setErrorMessage(null);
 
     try {
@@ -224,7 +286,7 @@ export function DocumentUploadZone({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cameraDataUrl: base64Data,
+          cameraDataUrl: capturedPhotoUrl,
         }),
       });
 
@@ -233,6 +295,7 @@ export function DocumentUploadZone({
         throw new Error(data.message || 'Failed to upload camera capture');
       }
 
+      setCapturedPhotoUrl(null);
       onUploadSuccess();
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to upload camera photo');
@@ -348,11 +411,52 @@ export function DocumentUploadZone({
               <Trash2 className="h-4 w-4" />
             </button>
           </>
+        ) : selectedFile ? (
+          // Preview state before upload (device file selected)
+          <div className="flex flex-col w-full gap-3 bg-primary/5 border border-dashed border-primary/30 p-3 rounded-lg">
+            <div className="flex items-center gap-3">
+              {localPreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={localPreviewUrl}
+                  alt="Device upload preview thumbnail"
+                  className="h-10 w-10 object-cover rounded-md border border-primary/20"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-foreground truncate">{selectedFile.name}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                  {Math.round(selectedFile.size / 1024)} KB — Click Confirm to Upload
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={confirmDeviceUpload}
+                className="flex-1 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
+              >
+                Confirm Upload
+              </button>
+              <button
+                type="button"
+                onClick={cancelDeviceUpload}
+                className="inline-flex h-8 items-center justify-center rounded-lg border border-border hover:bg-accent px-3 text-[11px] font-semibold text-muted-foreground cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         ) : (
           // Standard uploads options
           <>
             {/* Standard device file picker */}
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold px-3.5 cursor-pointer shadow-sm transition-colors"
             >
@@ -362,6 +466,7 @@ export function DocumentUploadZone({
 
             {/* Camera Capture */}
             <button
+              type="button"
               onClick={startCamera}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground text-xs font-semibold px-3 cursor-pointer transition-colors"
             >
@@ -371,6 +476,7 @@ export function DocumentUploadZone({
 
             {/* Google Drive Link */}
             <button
+              type="button"
               onClick={() => setDriveModalOpen(true)}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground text-xs font-semibold px-3 cursor-pointer transition-colors"
             >
@@ -448,41 +554,75 @@ export function DocumentUploadZone({
               </DialogDescription>
             </div>
             <button 
+              type="button"
               onClick={stopCamera}
-              className="h-8 w-8 rounded-full bg-zinc-900/80 flex items-center justify-center hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="h-8 w-8 rounded-full bg-zinc-900/80 flex items-center justify-center hover:bg-zinc-800 transition-colors cursor-pointer text-white"
             >
-              <span className="text-white text-xs">✕</span>
+              ✕
             </button>
           </div>
 
-          {/* Camera Viewport */}
+          {/* Camera Viewport or Preview */}
           <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-zinc-950">
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            <canvas ref={canvasRef} className="hidden" />
+            {capturedPhotoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={capturedPhotoUrl}
+                alt="Captured document snapshot preview"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <>
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <canvas ref={canvasRef} className="hidden" />
 
-            {/* Targeting overlay boundary */}
-            <div className="absolute inset-8 border-2 border-dashed border-primary/50 rounded-lg pointer-events-none flex items-center justify-center">
-              <span className="text-[10px] bg-black/60 text-white/80 px-3 py-1 rounded-full uppercase tracking-wider font-semibold border border-white/10">
-                Document Overlay Guide
-              </span>
-            </div>
+                {/* Targeting overlay boundary */}
+                <div className="absolute inset-8 border-2 border-dashed border-primary/50 rounded-lg pointer-events-none flex items-center justify-center">
+                  <span className="text-[10px] bg-black/60 text-white/80 px-3 py-1 rounded-full uppercase tracking-wider font-semibold border border-white/10">
+                    Document Overlay Guide
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Footer Controls */}
-          <div className="bg-black p-5 flex justify-center border-t border-zinc-900 z-10">
-            <button
-              onClick={captureSnapshot}
-              className="h-14 w-14 rounded-full border-4 border-white bg-red-600 flex items-center justify-center hover:bg-red-700 active:scale-95 transition-all shadow-md cursor-pointer"
-              title="Capture Image"
-            >
-              <span className="h-4 w-4 bg-white rounded-full"></span>
-            </button>
+          <div className="bg-black p-5 flex justify-center items-center gap-4 border-t border-zinc-900 z-10">
+            {capturedPhotoUrl ? (
+              <>
+                <button
+                  type="button"
+                  onClick={retakePhoto}
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 text-xs font-semibold text-zinc-200 cursor-pointer"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Retake Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmCameraUpload}
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-500 px-5 text-xs font-semibold text-white cursor-pointer shadow-xs"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Confirm and Upload
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={captureSnapshot}
+                className="h-14 w-14 rounded-full border-4 border-white bg-red-655 flex items-center justify-center hover:bg-red-700 active:scale-95 transition-all shadow-md cursor-pointer"
+                title="Capture Image"
+              >
+                <span className="h-4 w-4 bg-white rounded-full"></span>
+              </button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
