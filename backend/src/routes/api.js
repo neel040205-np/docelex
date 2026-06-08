@@ -46,6 +46,8 @@ router.route('/students/:id/document/:documentType')
   .post(protect, upload.single('file'), studentController.uploadDocument)
   .delete(protect, studentController.deleteDocument);
 
+router.put('/students/:studentId/document/:documentType/verify', protect, studentController.verifyDocument);
+
 // ==========================================
 // ANALYTICS & STATS ROUTES
 // ==========================================

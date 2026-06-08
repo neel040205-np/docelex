@@ -1,34 +1,11 @@
 const mongoose = require('mongoose');
 
-const DocumentSchema = new mongoose.Schema({
-  url: {
-    type: String,
-    required: true,
-  },
-  publicId: {
-    type: String,
-    required: true, // for Cloudinary deletion, or file name if local
-  },
-  fileName: {
-    type: String,
-    required: true,
-  },
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false,///////////////
-  },
-  uploadedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
 const StudentSchema = new mongoose.Schema(
   {
-    name: {
+    srNumber: {
       type: String,
-      required: [true, 'Student name is required'],
+      required: [true, 'SR Number is required'],
+      unique: true,
       trim: true,
     },
     grNumber: {
@@ -37,69 +14,129 @@ const StudentSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    class: {
+    surname: {
       type: String,
-      required: [true, 'Class is required'],
+      required: [true, 'Surname is required'],
       trim: true,
     },
-    division: {
+    firstName: {
       type: String,
-      required: [true, 'Division is required'],
+      required: [true, 'First Name is required'],
       trim: true,
+    },
+    fatherName: {
+      type: String,
+      required: [true, 'Father Name is required'],
+      trim: true,
+    },
+    grandFatherName: {
+      type: String,
+      required: [true, 'Grand Father Name is required'],
+      trim: true,
+    },
+    motherName: {
+      type: String,
+      required: [true, 'Mother Name is required'],
+      trim: true,
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female'],
+      required: [true, 'Gender is required'],
     },
     dob: {
       type: Date,
       required: [true, 'Date of Birth is required'],
     },
-    gender: {
-      type: String,
-      enum: ['male', 'female', 'other'],
-      required: [true, 'Gender is required'],
+    admissionDate: {
+      type: Date,
+      required: [true, 'Admission Date is required'],
     },
-    fatherName: {
+    caste: {
       type: String,
-      required: [true, 'Father name is required'],
+      required: [true, 'Caste is required'],
       trim: true,
     },
-    motherName: {
+    casteCategory: {
       type: String,
-      required: [true, 'Mother name is required'],
-      trim: true,
+      enum: ['General', 'OBC', 'SC', 'ST', 'EWS'],
+      required: [true, 'Caste Category is required'],
     },
-    mobile: {
-      type: String,
-      required: [true, 'Mobile number is required'],
-      trim: true,
-    },
-    address: {
-      type: String,
-      required: [true, 'Address is required'],
-      trim: true,
-    },
-    village: {
+    penNumber: {
       type: String,
       trim: true,
     },
-    taluka: {
+    apaarId: {
       type: String,
       trim: true,
     },
-    district: {
+    udiseNumber: {
       type: String,
       trim: true,
     },
-    // Document Uploads
-    documents: {
-      birthCertificate: DocumentSchema,
-      studentAadhaar: DocumentSchema,
-      fatherAadhaar: DocumentSchema,
-      motherAadhaar: DocumentSchema,
-      rationCard: DocumentSchema,
-      addressProof: DocumentSchema,
-      incomeCertificate: DocumentSchema,
-      casteCertificate: DocumentSchema,
-      passportPhoto: DocumentSchema,
+    nameAsPerChildTracking: {
+      type: String,
+      trim: true,
     },
+    nameAsPerUdisePlus: {
+      type: String,
+      trim: true,
+    },
+
+    // Aadhaar Details
+    aadhaarNumber: {
+      type: String,
+      required: [true, 'Aadhaar Number is required'],
+      trim: true,
+    },
+    aadhaarName: {
+      type: String,
+      required: [true, 'Name as per Aadhaar is required'],
+      trim: true,
+    },
+    aadhaarDob: {
+      type: Date,
+      required: [true, 'Date of Birth as per Aadhaar is required'],
+    },
+
+    // Bank Details
+    bankAccountNumber: {
+      type: String,
+      required: [true, 'Bank Account Number is required'],
+      trim: true,
+    },
+    bankIfscCode: {
+      type: String,
+      required: [true, 'IFSC Code is required'],
+      trim: true,
+    },
+    bankAccountHolderName: {
+      type: String,
+      required: [true, 'Account Holder Name is required'],
+      trim: true,
+    },
+
+    // Family Details
+    motherAadhaarNumber: {
+      type: String,
+      required: [true, "Mother's Aadhaar Number is required"],
+      trim: true,
+    },
+    fatherAadhaarNumber: {
+      type: String,
+      required: [true, "Father's Aadhaar Number is required"],
+      trim: true,
+    },
+    mobileNumber1: {
+      type: String,
+      required: [true, 'Mobile Number 1 is required'],
+      trim: true,
+    },
+    mobileNumber2: {
+      type: String,
+      trim: true,
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -108,7 +145,6 @@ const StudentSchema = new mongoose.Schema(
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: false,
     },
   },
   {
@@ -116,7 +152,16 @@ const StudentSchema = new mongoose.Schema(
   }
 );
 
-// Composite or index searches
-StudentSchema.index({ name: 'text', grNumber: 'text' });
+// Virtual for backward compatibility with old code that uses student.name
+StudentSchema.virtual('name').get(function() {
+  return `${this.firstName} ${this.surname}`;
+});
+
+// Set toJSON option to include virtuals
+StudentSchema.set('toJSON', { virtuals: true });
+StudentSchema.set('toObject', { virtuals: true });
+
+// Search indexes
+StudentSchema.index({ surname: 'text', firstName: 'text', grNumber: 'text', srNumber: 'text' });
 
 module.exports = mongoose.model('Student', StudentSchema);
