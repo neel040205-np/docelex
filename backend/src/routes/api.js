@@ -25,18 +25,6 @@ router.get('/students/export/csv', protect, studentController.exportCSV);
 router.get('/students/export/excel', protect, studentController.exportExcel);
 router.get('/students/export/pdf', protect, studentController.exportPDF);
 
-const multer = require('multer');
-const importUpload = multer({ storage: multer.memoryStorage() });
-
-// ==========================================
-// BULK STUDENT IMPORT ROUTES
-// ==========================================
-router.get('/students/import/template', protect, studentController.downloadImportTemplate);
-router.post('/students/import/validate', protect, importUpload.single('file'), studentController.validateBulkImport);
-router.post('/students/import/execute', protect, studentController.executeBulkImport);
-router.get('/students/import/history', protect, studentController.getImportHistory);
-router.get('/students/import/history/:id/error-report', protect, studentController.downloadImportErrorReport);
-
 // ==========================================
 // STUDENT CRUD ROUTES
 // ==========================================
@@ -57,8 +45,6 @@ router.get('/students/:id/download-documents', protect, studentController.downlo
 router.route('/students/:id/document/:documentType')
   .post(protect, upload.single('file'), studentController.uploadDocument)
   .delete(protect, studentController.deleteDocument);
-
-router.put('/students/:studentId/document/:documentType/verify', protect, studentController.verifyDocument);
 
 // ==========================================
 // ANALYTICS & STATS ROUTES
