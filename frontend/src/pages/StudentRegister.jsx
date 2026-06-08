@@ -194,7 +194,7 @@ export const StudentRegister = () => {
                 <Form.Item
                   name="grandFatherName"
                   label="Grand Father's Name"
-                  rules={[{ required: true, message: 'Grandfather name is required' }]}
+                  //rules={[{ required: true, message: 'Grandfather name is required' }]}
                 >
                   <Input placeholder="Grandfather's name" />
                 </Form.Item>
