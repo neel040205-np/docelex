@@ -32,7 +32,6 @@ const StudentSchema = new mongoose.Schema(
     },
     grandFatherName: {
       type: String,
-      required: [false, "Grand Father's Name is Optional"],
       trim: true,
     },
     motherName: {
