@@ -209,10 +209,10 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
               aria-label={t('common.language')}
               value={i18n.language}
               onChange={handleLanguageChange}
-              style={{ width: isMobile ? 95 : 120 }}
+              style={{ width: isMobile ? 110 : 120 }}
               options={[
-                { value: 'en', label: 'En' },
-                { value: 'gu', label: 'ગુજ' },
+                { value: 'en', label: 'English' },
+                { value: 'gu', label: 'Gujarati' },
               ]}
             />
 
