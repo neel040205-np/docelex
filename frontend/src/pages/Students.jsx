@@ -207,6 +207,164 @@ export const Students = () => {
     return false; // Prevent auto Upload of AntD
   };
 
+  const loadGoogleSDKs = () => {
+    return new Promise((resolve, reject) => {
+      const loadGapi = new Promise((res, rej) => {
+        if (window.gapi) {
+          res();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://apis.google.com/js/api.js';
+        script.async = true;
+        script.defer = true;
+        script.onload = res;
+        script.onerror = rej;
+        document.head.appendChild(script);
+      });
+
+      const loadGis = new Promise((res, rej) => {
+        if (window.google?.accounts?.oauth2) {
+          res();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = res;
+        script.onerror = rej;
+        document.head.appendChild(script);
+      });
+
+      Promise.all([loadGapi, loadGis]).then(() => resolve()).catch(reject);
+    });
+  };
+
+  const handleDriveFileFetchAndUpload = async (fileId, fileName, mimeType, token, docType) => {
+    setUploadingDoc((prev) => ({ ...prev, [docType]: true }));
+    const hideMessage = message.loading(`Downloading "${fileName}" from Google Drive...`, 0);
+    
+    try {
+      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const file = new File([blob], fileName, { type: mimeType });
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadResponse = await client.post(`/students/${viewingStudentId}/document/${docType}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      
+      if (uploadResponse.success) {
+        message.success(t('students.documentUploadedSuccess', { document: t(`documents.${docType}`) }));
+        queryClient.invalidateQueries(['student-detail', viewingStudentId]);
+        queryClient.invalidateQueries(['students']);
+        queryClient.invalidateQueries(['stats']);
+      }
+    } catch (error) {
+      console.error(error);
+      message.error(`Failed to fetch file from Google Drive: ${error.message}`);
+    } finally {
+      hideMessage();
+      setUploadingDoc((prev) => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const openPicker = (accessToken, clientId, apiKey, docType) => {
+    gapi.load('picker', () => {
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
+      view.setMimeTypes('image/jpeg,image/jpg,image/png,application/pdf');
+      
+      const picker = new google.picker.PickerBuilder()
+        .enableFeature(google.picker.Feature.NAV_HIDDEN)
+        .setDeveloperKey(apiKey)
+        .setAppId(clientId)
+        .setOAuthToken(accessToken)
+        .addView(view)
+        .setCallback(async (data) => {
+          if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+            const document = data[google.picker.Response.DOCUMENTS][0];
+            const fileId = document[google.picker.Document.ID];
+            const fileName = document[google.picker.Document.NAME];
+            const mimeType = document[google.picker.Document.MIME_TYPE];
+            
+            await handleDriveFileFetchAndUpload(fileId, fileName, mimeType, accessToken, docType);
+          }
+        })
+        .build();
+      picker.setVisible(true);
+    });
+  };
+
+  const launchGooglePicker = async (docType, clientId, apiKey) => {
+    try {
+      await loadGoogleSDKs();
+      
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/drive.readonly',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error !== undefined) {
+            throw tokenResponse;
+          }
+          openPicker(tokenResponse.access_token, clientId, apiKey, docType);
+        },
+      });
+      
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    } catch (error) {
+      console.error('Picker launch error:', error);
+      message.error(`Google Picker initialization failed: ${error.message || 'Check configuration'}`);
+    }
+  };
+
+  const handleOpenDrivePicker = async (docType) => {
+    setCurrentDocKey(docType);
+    
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    
+    if (!clientId || clientId.includes('your-google-client-id') || !apiKey || apiKey.includes('your-google-api-key')) {
+      Modal.info({
+        title: 'Google Drive Integration Setup Required',
+        width: 500,
+        content: (
+          <div style={{ marginTop: '10px' }}>
+            <p>To browse and pick files directly from Google Drive, please configure your Google API credentials.</p>
+            <p><strong>Setup Steps:</strong></p>
+            <ol style={{ paddingLeft: '20px' }}>
+              <li style={{ marginBottom: '6px' }}>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>.</li>
+              <li style={{ marginBottom: '6px' }}>Enable the <strong>Google Drive API</strong> and <strong>Google Picker API</strong> for your project.</li>
+              <li style={{ marginBottom: '6px' }}>Create an <strong>OAuth 2.0 Client ID</strong> (Web Application) and add your app's origin URL (e.g. <code>http://localhost:5173</code>) to authorized origins.</li>
+              <li style={{ marginBottom: '6px' }}>Create an <strong>API Key</strong>.</li>
+              <li style={{ marginBottom: '6px' }}>Add these to the <code>frontend/.env</code> file in your workspace:
+                <pre style={{ background: 'var(--border-color)', padding: '8px', borderRadius: '4px', marginTop: '6px', fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                  {`VITE_GOOGLE_CLIENT_ID=your_client_id_here\nVITE_GOOGLE_API_KEY=your_api_key_here`}
+                </pre>
+              </li>
+            </ol>
+            <p style={{ marginTop: '10px' }}><em>After updating the environment file, please restart your Vite development server.</em></p>
+          </div>
+        ),
+        okText: 'Understood',
+      });
+      return;
+    }
+    
+    await launchGooglePicker(docType, clientId, apiKey);
+  };
+
   const handleOpenDriveModal = (docType) => {
     setCurrentDocKey(docType);
     setDriveLink('');
@@ -1015,10 +1173,20 @@ export const Students = () => {
                                   type="dashed"
                                   size="small"
                                   icon={<GoogleOutlined style={{ color: '#4285F4' }} />}
-                                  onClick={() => handleOpenDriveModal(doc.key)}
+                                  onClick={() => handleOpenDrivePicker(doc.key)}
+                                  loading={uploadingDoc[doc.key]}
                                   style={{ fontSize: 11, width: '100%' }}
                                 >
-                                  {t('students.uploadFromDrive', 'Upload Google Drive Link')}
+                                  {t('students.googleDriveDirect', 'Google Drive')}
+                                </Button>
+
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  onClick={() => handleOpenDriveModal(doc.key)}
+                                  style={{ fontSize: 10, padding: 0, height: 'auto' }}
+                                >
+                                  {t('students.uploadViaLink', 'Upload via Link')}
                                 </Button>
                               </div>
                             )}
