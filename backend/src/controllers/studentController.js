@@ -53,8 +53,7 @@ exports.downloadStudentDocuments = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    const folderName = `${student.name.replace(/[^\w\s]/gi, ' ').trim()} Docs`;
-    res.attachment(`${folderName.replace(/\s+/g, '_')}.zip`);
+    res.attachment(`${student.name.replace(/[^\w\s]/gi, '_')}_documents.zip`);
 
     const archive = archiver('zip', {
       zlib: { level: 9 },
@@ -75,7 +74,7 @@ exports.downloadStudentDocuments = async (req, res) => {
         });
 
         archive.append(response.data, {
-          name: `${folderName}/${doc.fileName}`,
+          name: doc.fileName,
         });
       } catch (err) {
         console.error(`Error zipping document ${doc.fileName} for student ${student.name}:`, err.message);
@@ -87,7 +86,7 @@ exports.downloadStudentDocuments = async (req, res) => {
       const s = new Readable();
       s.push('No documents uploaded for this student yet.');
       s.push(null);
-      archive.append(s, { name: `${folderName}/readme.txt` });
+      archive.append(s, { name: 'readme.txt' });
     }
 
     await archive.finalize();
@@ -413,11 +412,7 @@ exports.deleteStudent = async (req, res) => {
 // @access  Private
 exports.uploadDocument = async (req, res) => {
   try {
-    let { id, documentType } = req.params;
-
-    if (documentType === 'caste') documentType = 'casteCertificate';
-    if (documentType === 'address') documentType = 'addressProof';
-    if (documentType === 'photo') documentType = 'passportPhoto';
+    const { id, documentType } = req.params;
 
     if (!VALID_DOCUMENTS.includes(documentType)) {
       return res.status(400).json({ success: false, message: 'Invalid document type specified' });
@@ -497,11 +492,7 @@ exports.uploadDocument = async (req, res) => {
 // @access  Private
 exports.deleteDocument = async (req, res) => {
   try {
-    let { id, documentType } = req.params;
-
-    if (documentType === 'caste') documentType = 'casteCertificate';
-    if (documentType === 'address') documentType = 'addressProof';
-    if (documentType === 'photo') documentType = 'passportPhoto';
+    const { id, documentType } = req.params;
 
     if (!VALID_DOCUMENTS.includes(documentType)) {
       return res.status(400).json({ success: false, message: 'Invalid document type specified' });
