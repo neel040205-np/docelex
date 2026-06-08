@@ -17,6 +17,8 @@ import {
   Badge,
   Progress,
   Grid,
+  Modal,
+  Upload,
 } from 'antd';
 import {
   SearchOutlined,
@@ -31,6 +33,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   SafetyCertificateOutlined,
+  UploadOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 
@@ -58,6 +62,71 @@ export const StudentList = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Excel/CSV Import State
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [fileList, setFileList] = useState([]);
+
+  const handleImportSubmit = async () => {
+    if (fileList.length === 0) {
+      message.error(t('students.selectImportFile', 'Please select a file to import first.'));
+      return;
+    }
+    const file = fileList[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const response = await client.post('/students/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.success) {
+        message.success(t('students.importSuccess', 'Spreadsheet import processed successfully.'));
+        setImportResult(response);
+        queryClient.invalidateQueries(['students']);
+        queryClient.invalidateQueries(['stats']);
+      } else {
+        message.error(response.message || t('students.importFailed', 'Import failed.'));
+      }
+    } catch (err) {
+      console.error(err);
+      message.error(err.response?.data?.message || err.message || t('students.importFailed', 'Import failed.'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleCloseImportModal = () => {
+    setImportModalOpen(false);
+    setFileList([]);
+    setImportResult(null);
+    setImporting(false);
+  };
+
+  const uploadProps = {
+    onRemove: (file) => {
+      setFileList([]);
+    },
+    beforeUpload: (file) => {
+      const isExcelOrCsv = ['.csv', '.xlsx', '.xls'].some(ext => file.name.toLowerCase().endsWith(ext));
+      if (!isExcelOrCsv) {
+        message.error(t('students.invalidImportFormat', 'You can only upload Excel (.xlsx, .xls) or CSV (.csv) files.'));
+        return Upload.LIST_IGNORE;
+      }
+      setFileList([file]);
+      return false; // prevent auto-upload
+    },
+    fileList,
+    maxCount: 1,
+  };
 
   // 1. Fetch Students List
   const { data: studentsData, isLoading } = useQuery({
@@ -291,6 +360,15 @@ export const StudentList = () => {
                 </Space>
               </Option>
             </Select>
+
+            <Button
+              type="default"
+              icon={<UploadOutlined />}
+              onClick={() => setImportModalOpen(true)}
+              style={{ borderRadius: '8px' }}
+            >
+              {t('students.importSpreadsheet', 'Import Excel/CSV')}
+            </Button>
 
             <Button
               type="primary"
@@ -591,6 +669,107 @@ export const StudentList = () => {
           />
         )}
       </Card>
+
+      {/* ---------------------------------------------------- */}
+      {/* Excel / CSV Directory Importer Modal                 */}
+      {/* ---------------------------------------------------- */}
+      <Modal
+        title={t('students.importModalTitle', 'Import Student Directory')}
+        open={importModalOpen}
+        onCancel={handleCloseImportModal}
+        width={650}
+        destroyOnClose
+        footer={[
+          <Button key="close" onClick={handleCloseImportModal}>
+            {t('common.close', 'Close')}
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={importing}
+            onClick={handleImportSubmit}
+            disabled={fileList.length === 0}
+          >
+            {t('students.importNow', 'Import Now')}
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: '12px 0' }}>
+          <Paragraph>
+            Upload a spreadsheet (<strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong>) to automatically register new students or bulk-update existing details using matching <strong>SR Number</strong> or <strong>GR Number</strong>.
+          </Paragraph>
+
+          <Upload.Dragger {...uploadProps} style={{ padding: '20px', background: 'var(--bg-card)', border: '2px dashed var(--border-color)' }}>
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined style={{ color: '#1890ff', fontSize: '48px' }} />
+            </p>
+            <p className="ant-upload-text">Click or drag Excel/CSV file to this area to upload</p>
+            <p className="ant-upload-hint">Support for single file upload only. Max size 10MB.</p>
+          </Upload.Dragger>
+
+          {/* Import Result Status */}
+          {importResult && (
+            <div style={{ marginTop: '20px', padding: '16px', background: 'var(--bg-body, #fafafa)', borderRadius: '8px', border: '1px solid var(--border-color, #d9d9d9)' }}>
+              <Title level={5} style={{ marginTop: 0 }}>Import Summary</Title>
+              <Space size="large" style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '16px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <Badge count={importResult.summary.created} showZero color="#52c41a" />
+                  <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-secondary)' }}>Registered</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <Badge count={importResult.summary.updated} showZero color="#1890ff" />
+                  <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-secondary)' }}>Updated</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <Badge count={importResult.summary.failed} showZero color="#ff4d4f" />
+                  <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-secondary)' }}>Failed</div>
+                </div>
+              </Space>
+
+              {importResult.errors && importResult.errors.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#ff4d4f', marginBottom: '6px' }}>Validation Errors:</div>
+                  <div style={{
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    padding: '10px',
+                    background: isDarkMode ? '#2d1c20' : '#fff1f0',
+                    border: '1px solid #ffccc7',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    color: isDarkMode ? '#ff7875' : '#a8071a'
+                  }}>
+                    {importResult.errors.map((err, idx) => (
+                      <div key={idx} style={{ marginBottom: '4px' }}>• {err}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Guide section */}
+          <div style={{ marginTop: '16px', background: 'var(--bg-body, #f5f5f5)', padding: '16px', borderRadius: '8px' }}>
+            <Title level={5} style={{ marginTop: 0, fontSize: '14px' }}>Column Mapping Guide</Title>
+            <Paragraph style={{ fontSize: '13px', marginBottom: '8px' }}>
+              The importer automatically maps headers based on spelling. Ensure either <strong>SR Number</strong> or <strong>GR Number</strong> is present in each row.
+            </Paragraph>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', fontSize: '12px' }}>
+              <ul style={{ paddingLeft: '20px', margin: 0, lineHeight: '1.6' }}>
+                <li><strong>SR Number:</strong> "SR Number", "srno", "sr_no"</li>
+                <li><strong>GR Number:</strong> "GR Number", "grno", "gr_no"</li>
+                <li><strong>Basic Info:</strong> "First Name", "Surname", "Father Name", "Mother Name", "Gender", "DOB" / "Date of Birth"</li>
+                <li><strong>School Info:</strong> "Class", "Division", "Admission Date"</li>
+                <li><strong>Aadhaar:</strong> "Aadhaar Number", "Name as per Aadhaar", "DOB as per Aadhaar"</li>
+                <li><strong>Bank Details:</strong> "Bank Account Number", "IFSC Code", "Account Holder Name"</li>
+                <li><strong>Family:</strong> "Mobile Number 1", "Mobile Number 2", "Mother Aadhaar Number", "Father Aadhaar Number"</li>
+                <li><strong>Identifiers:</strong> "PEN Number", "APAAR ID", "UDISE Number"</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

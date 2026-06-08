@@ -11,6 +11,22 @@ const auditLogController = require('../controllers/auditLogController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+// In-memory upload storage configuration specifically for excel/csv spreadsheet imports
+const path = require('path');
+const multer = require('multer');
+const importUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.csv', '.xlsx', '.xls'].includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel (.xlsx, .xls) and CSV (.csv) files are allowed.'));
+    }
+  }
+});
+
 // ==========================================
 // AUTH ROUTES
 // ==========================================
@@ -30,6 +46,8 @@ router.get('/students/export/pdf', protect, studentController.exportPDF);
 // ==========================================
 router.get('/students/check-duplicate', protect, studentController.checkDuplicate);
 router.get('/students/next-sr', protect, studentController.getNextSrNumber);
+router.post('/students/import', protect, importUpload.single('file'), studentController.importStudents);
+
 
 router.route('/students')
   .get(protect, studentController.getStudents)

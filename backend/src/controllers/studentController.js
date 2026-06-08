@@ -1061,3 +1061,245 @@ exports.exportPDF = async (req, res) => {
     }
   }
 };
+
+// @desc    Import students from Excel or CSV spreadsheet
+// @route   POST /api/students/import
+// @access  Private
+exports.importStudents = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload an Excel or CSV file' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'The uploaded file contains no data' });
+    }
+
+    const normalizeHeader = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const FIELD_MAP = {
+      srnumber: 'srNumber',
+      srno: 'srNumber',
+      grnumber: 'grNumber',
+      grno: 'grNumber',
+      surname: 'surname',
+      firstname: 'firstName',
+      fathername: 'fatherName',
+      fathersname: 'fatherName',
+      grandfathername: 'grandFatherName',
+      grandfathersname: 'grandFatherName',
+      mothername: 'motherName',
+      mothersname: 'motherName',
+      gender: 'gender',
+      dob: 'dob',
+      dateofbirth: 'dob',
+      admissiondate: 'admissionDate',
+      caste: 'caste',
+      castecategory: 'casteCategory',
+      pennumber: 'penNumber',
+      apaarid: 'apaarId',
+      udisenumber: 'udiseNumber',
+      nameasperchildtracking: 'nameAsPerChildTracking',
+      nameasperudiseplus: 'nameAsPerUdisePlus',
+      aadhaarnumber: 'aadhaarNumber',
+      nameasperaadhaar: 'nameAsPerAadhaar',
+      dobasperaadhaar: 'dobAsPerAadhaar',
+      bankaccountnumber: 'bankAccountNumber',
+      ifsccode: 'ifscCode',
+      accountholdername: 'accountHolderName',
+      motheraadhaarnumber: 'motherAadhaarNumber',
+      fatheraadhaarnumber: 'fatherAadhaarNumber',
+      mobilenumber1: 'mobileNumber1',
+      mobile1: 'mobileNumber1',
+      mobile: 'mobileNumber1',
+      mobilenumber2: 'mobileNumber2',
+      mobile2: 'mobileNumber2',
+      class: 'class',
+      division: 'division'
+    };
+
+    const parseImportDate = (val) => {
+      if (!val) return null;
+      if (val instanceof Date) return val;
+      if (typeof val === 'number') {
+        // Excel base date is Jan 1 1900
+        const date = new Date((val - (val > 59 ? 25569 : 25568)) * 86400 * 1000);
+        return date;
+      }
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) return d;
+      
+      const parts = String(val).split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          if (!isNaN(date.getTime())) return date;
+        } else {
+          const date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          if (!isNaN(date.getTime())) return date;
+        }
+      }
+      return null;
+    };
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    // Process rows sequentially
+    for (let i = 0; i < rows.length; i++) {
+      const rowNum = i + 2; // header is row 1, index starts at 0
+      const rawRow = rows[i];
+      const data = {};
+
+      // Map raw headers to student schema fields
+      for (const [key, val] of Object.entries(rawRow)) {
+        const normKey = normalizeHeader(key);
+        const mappedField = FIELD_MAP[normKey];
+        if (mappedField) {
+          data[mappedField] = val;
+        }
+      }
+
+      // Skip empty rows
+      if (Object.values(data).every(val => val === '')) {
+        continue;
+      }
+
+      try {
+        // String conversion and float cleaning for numeric fields
+        const stringFields = [
+          'srNumber', 'grNumber', 'aadhaarNumber', 'bankAccountNumber', 
+          'mobileNumber1', 'mobileNumber2', 'motherAadhaarNumber', 'fatherAadhaarNumber',
+          'penNumber', 'apaarId', 'udiseNumber'
+        ];
+        for (const f of stringFields) {
+          if (data[f] !== undefined && data[f] !== null && data[f] !== '') {
+            data[f] = String(data[f]).trim();
+            if (data[f].endsWith('.0')) {
+              data[f] = data[f].substring(0, data[f].length - 2);
+            }
+          }
+        }
+
+        // Required Check: Must have either srNumber or grNumber to match/identify
+        const matchCriteria = [];
+        if (data.srNumber) matchCriteria.push({ srNumber: data.srNumber });
+        if (data.grNumber) matchCriteria.push({ grNumber: data.grNumber });
+
+        if (matchCriteria.length === 0) {
+          throw new Error('Missing SR Number and GR Number');
+        }
+
+        // Value Normalization
+        // 1. Gender
+        if (data.gender) {
+          const g = String(data.gender).trim().toLowerCase();
+          if (g.startsWith('m')) data.gender = 'Male';
+          else if (g.startsWith('f')) data.gender = 'Female';
+          else data.gender = 'Other';
+        }
+
+        // 2. Caste Category
+        if (data.casteCategory) {
+          const cc = String(data.casteCategory).trim().toUpperCase();
+          if (['GENERAL', 'OBC', 'SC', 'ST', 'EWS'].includes(cc)) {
+            data.casteCategory = cc === 'GENERAL' ? 'General' : cc;
+          } else {
+            throw new Error(`Invalid Caste Category '${data.casteCategory}'. Allowed values: General, OBC, SC, ST, EWS`);
+          }
+        }
+
+        // 3. Dates
+        if (data.dob) {
+          const parsed = parseImportDate(data.dob);
+          if (!parsed) throw new Error(`Invalid Date of Birth: ${data.dob}`);
+          data.dob = parsed;
+        }
+        if (data.admissionDate) {
+          const parsed = parseImportDate(data.admissionDate);
+          if (!parsed) throw new Error(`Invalid Admission Date: ${data.admissionDate}`);
+          data.admissionDate = parsed;
+        }
+        if (data.dobAsPerAadhaar) {
+          const parsed = parseImportDate(data.dobAsPerAadhaar);
+          if (!parsed) throw new Error(`Invalid DOB as per Aadhaar: ${data.dobAsPerAadhaar}`);
+          data.dobAsPerAadhaar = parsed;
+        }
+
+        // Search database
+        const existingStudent = await Student.findOne({ $or: matchCriteria });
+
+        if (existingStudent) {
+          // Merge spreadsheet data into existing student
+          for (const [key, value] of Object.entries(data)) {
+            if (value !== undefined && value !== null && value !== '') {
+              existingStudent[key] = value;
+            }
+          }
+          existingStudent.updatedBy = req.user._id;
+          await existingStudent.save();
+          updatedCount++;
+        } else {
+          // Validate required fields for creation
+          const requiredFields = [
+            'srNumber', 'grNumber', 'surname', 'firstName', 'fatherName', 'motherName',
+            'gender', 'dob', 'admissionDate', 'caste', 'casteCategory', 'aadhaarNumber',
+            'nameAsPerAadhaar', 'dobAsPerAadhaar', 'bankAccountNumber', 'ifscCode',
+            'accountHolderName', 'mobileNumber1', 'class', 'division'
+          ];
+          const missingFields = requiredFields.filter(f => !data[f] || String(data[f]).trim() === '');
+          if (missingFields.length > 0) {
+            throw new Error(`Cannot register new student, missing required fields: ${missingFields.join(', ')}`);
+          }
+
+          data.createdBy = req.user._id;
+          data.updatedBy = req.user._id;
+          data.verificationStatus = 'Pending';
+
+          const newStudent = new Student(data);
+          await newStudent.save();
+          createdCount++;
+        }
+      } catch (err) {
+        failedCount++;
+        console.error(`Row ${rowNum} import error:`, err);
+        if (err.name === 'ValidationError') {
+          const valErrors = Object.values(err.errors).map(val => val.message);
+          errors.push(`Row ${rowNum}: ${valErrors.join(', ')}`);
+        } else {
+          errors.push(`Row ${rowNum}: ${err.message}`);
+        }
+      }
+    }
+
+    // Write a summary Audit Log entry
+    await AuditLog.create({
+      action: 'IMPORT_STUDENTS',
+      performedBy: req.user._id,
+      details: `Spreadsheet Import summary: Registered: ${createdCount}, Updated: ${updatedCount}, Failed: ${failedCount}`,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Spreadsheet import processing completed',
+      summary: {
+        created: createdCount,
+        updated: updatedCount,
+        failed: failedCount
+      },
+      errors
+    });
+  } catch (error) {
+    console.error('Import processing crash:', error);
+    res.status(500).json({ success: false, message: 'Server error processing student import spreadsheet' });
+  }
+};
+
