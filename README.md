@@ -15,7 +15,7 @@ DocElex is a production-ready Student Document Management System built using the
 ## Core Features
 
 1. **Teacher Authentication**:
-   - Single Teacher account with full access to register students, manage all details, upload documents, delete records, and view audit logs.
+   - Authorized teachers can log in with their existing account credentials.
 2. **Student Directory & Profiles**:
    - Detailed profile pages tracking GR Number, personal bio, family details, and address records.
    - Live query searching, filtering by academic class or division, and locating folders with missing documents.

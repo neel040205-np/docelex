@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Button, Dropdown, Space, Avatar, Typography, Select } from 'antd';
+import { Layout, Menu, Button, Dropdown, Space, Avatar, Typography, Select, Drawer, Grid } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
   HistoryOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
+  MenuOutlined,
   LogoutOutlined,
   BulbOutlined,
   BulbFilled,
@@ -17,13 +18,19 @@ import { useTranslation } from 'react-i18next';
 
 const { Header, Sider, Content, Footer } = Layout;
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const { user, logout } = useAuth();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const screens = useBreakpoint();
+
+  // Screen breakpoints
+  const isMobile = screens.xs || (screens.sm && !screens.md);
 
   const handleLanguageChange = (language) => {
     i18n.changeLanguage(language);
@@ -50,6 +57,9 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
 
   const handleMenuClick = ({ key }) => {
     navigate(key);
+    if (isMobile) {
+      setDrawerVisible(false);
+    }
   };
 
   const userMenu = {
@@ -81,64 +91,102 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
     ],
   };
 
+  const menuElement = (
+    <Menu
+      theme="dark"
+      mode="inline"
+      selectedKeys={[location.pathname]}
+      items={menuItems}
+      onClick={handleMenuClick}
+      style={{
+        padding: '16px 0',
+        borderRight: 0,
+        background: isDarkMode ? '#0d1117' : '#1e1b4b',
+      }}
+    />
+  );
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        breakpoint="lg"
-        onBreakpoint={(broken) => setCollapsed(broken)}
-        style={{
-          boxShadow: '4px 0 24px 0 rgba(0,0,0,0.05)',
-          zIndex: 10,
-        }}
-      >
-        <div
+      {/* Sider for Desktop */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          breakpoint="lg"
+          onBreakpoint={(broken) => setCollapsed(broken)}
           style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            padding: '0 24px',
+            boxShadow: '4px 0 24px 0 rgba(0,0,0,0.05)',
+            zIndex: 10,
             background: isDarkMode ? '#0d1117' : '#1e1b4b',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
           }}
         >
-          <span style={{ fontSize: 22, marginRight: 8 }}>📁</span>
-          {!collapsed && (
-            <span
-              style={{
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: 18,
-                letterSpacing: '0.5px',
-                fontFamily: 'Outfit',
-              }}
-            >
-              DocElex
-            </span>
-          )}
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{
-            padding: '16px 0',
-            borderRight: 0,
-            background: isDarkMode ? '#0d1117' : '#1e1b4b',
+          <div
+            style={{
+              height: 64,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              padding: '0 24px',
+              background: isDarkMode ? '#0d1117' : '#1e1b4b',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+            }}
+          >
+            <span style={{ fontSize: 22, marginRight: 8 }}>📁</span>
+            {!collapsed && (
+              <span
+                style={{
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 18,
+                  letterSpacing: '0.5px',
+                  fontFamily: 'Outfit',
+                }}
+              >
+                DocElex
+              </span>
+            )}
+          </div>
+          {menuElement}
+        </Sider>
+      )}
+
+      {/* Drawer for Mobile */}
+      {isMobile && (
+        <Drawer
+          title={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 22, marginRight: 8 }}>📁</span>
+              <span style={{ color: '#ffffff', fontWeight: 800, fontSize: 18, fontFamily: 'Outfit' }}>
+                DocElex
+              </span>
+            </div>
+          }
+          placement="left"
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          width={260}
+          styles={{
+            header: {
+              background: isDarkMode ? '#0d1117' : '#1e1b4b',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+            },
+            body: {
+              padding: 0,
+              background: isDarkMode ? '#0d1117' : '#1e1b4b',
+            },
           }}
-        />
-      </Sider>
+        >
+          {menuElement}
+        </Drawer>
+      )}
 
       <Layout>
         <Header
           className="glass-panel"
           style={{
-            padding: '0 24px',
+            padding: '0 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -151,20 +199,20 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
         >
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ fontSize: '16px', width: 64, height: 64 }}
+            icon={isMobile ? <MenuOutlined /> : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)}
+            onClick={() => isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed)}
+            style={{ fontSize: '18px', width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           />
 
-          <Space size="large">
+          <Space size={isMobile ? "small" : "large"}>
             <Select
               aria-label={t('common.language')}
               value={i18n.language}
               onChange={handleLanguageChange}
-              style={{ width: 120 }}
+              style={{ width: isMobile ? 95 : 120 }}
               options={[
-                { value: 'en', label: 'English' },
-                { value: 'gu', label: 'ગુજરાતી' },
+                { value: 'en', label: 'En' },
+                { value: 'gu', label: 'ગુજ' },
               ]}
             />
 
@@ -201,7 +249,7 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
 
         <Content
           style={{
-            margin: '24px',
+            margin: isMobile ? '12px' : '24px',
             padding: '0',
             minHeight: 280,
             animation: 'fadeIn 0.5s ease',
@@ -210,10 +258,11 @@ export const AppLayout = ({ isDarkMode, toggleDarkMode }) => {
           <Outlet />
         </Content>
 
-        <Footer style={{ textAlign: 'center', color: 'var(--text-secondary)', background: 'transparent' }}>
+        <Footer style={{ textAlign: 'center', color: 'var(--text-secondary)', background: 'transparent', padding: '16px' }}>
           {t('app.footer', { year: new Date().getFullYear() })}
         </Footer>
       </Layout>
     </Layout>
   );
 };
+

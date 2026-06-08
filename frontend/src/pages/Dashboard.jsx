@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import client from '../api/client';
-import { Card, Row, Col, Statistic, Spin, Typography, Space, Button, Alert } from 'antd';
+import { Card, Row, Col, Statistic, Spin, Typography, Space, Button, Alert, Grid } from 'antd';
 import {
   UserOutlined,
   FileExclamationOutlined,
@@ -26,10 +26,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const { Title, Paragraph } = Typography;
+const { useBreakpoint } = Grid;
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const screens = useBreakpoint();
+  const isMobile = screens.xs || (screens.sm && !screens.md);
 
   // React Query fetch
   const { data, isLoading, isError, refetch } = useQuery({
@@ -72,7 +75,7 @@ export const Dashboard = () => {
   return (
     <div className="animate-slide-up">
       {/* Title Header */}
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'between', alignItems: 'center' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <Title level={2} style={{ margin: 0, fontWeight: 700 }}>
             {t('dashboard.title')}
@@ -81,12 +84,12 @@ export const Dashboard = () => {
             {t('dashboard.subtitle')}
           </Paragraph>
         </div>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: isMobile ? '0' : 'auto', width: isMobile ? '100%' : 'auto' }}>
           <Button
             type="primary"
             icon={<UserOutlined />}
             onClick={() => navigate('/students')}
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: '100%' }}
           >
             {t('dashboard.manageDirectory')} <ArrowRightOutlined />
           </Button>
@@ -94,7 +97,7 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
         {/* Total Students */}
         <Col xs={24} sm={8}>
           <Card
@@ -108,7 +111,7 @@ export const Dashboard = () => {
             <Statistic
               title={<span style={{ color: '#4f46e5', fontWeight: 600 }}>{t('dashboard.totalStudents')}</span>}
               value={metrics.totalStudents}
-              valueStyle={{ fontSize: '36px', fontWeight: 800, color: '#312e81' }}
+              valueStyle={{ fontSize: isMobile ? '28px' : '36px', fontWeight: 800, color: '#312e81' }}
               prefix={<UserOutlined style={{ marginRight: '8px', color: '#6366f1' }} />}
             />
           </Card>
@@ -127,7 +130,7 @@ export const Dashboard = () => {
             <Statistic
               title={<span style={{ color: '#059669', fontWeight: 600 }}>{t('dashboard.completeRecords')}</span>}
               value={metrics.completeDocsStudents}
-              valueStyle={{ fontSize: '36px', fontWeight: 800, color: '#064e3b' }}
+              valueStyle={{ fontSize: isMobile ? '28px' : '36px', fontWeight: 800, color: '#064e3b' }}
               prefix={<FileDoneOutlined style={{ marginRight: '8px', color: '#10b981' }} />}
             />
           </Card>
@@ -146,7 +149,7 @@ export const Dashboard = () => {
             <Statistic
               title={<span style={{ color: '#dc2626', fontWeight: 600 }}>{t('dashboard.missingDocuments')}</span>}
               value={metrics.missingDocsStudents}
-              valueStyle={{ fontSize: '36px', fontWeight: 800, color: '#7f1d1d' }}
+              valueStyle={{ fontSize: isMobile ? '28px' : '36px', fontWeight: 800, color: '#7f1d1d' }}
               prefix={<FileExclamationOutlined style={{ marginRight: '8px', color: '#ef4444' }} />}
             />
           </Card>
@@ -166,8 +169,8 @@ export const Dashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={classStats}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="class" />
-                  <YAxis />
+                  <XAxis dataKey="class" tick={{ fontSize: isMobile ? 10 : 12 }} />
+                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="complete" name={t('dashboard.completeDocuments')} fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -236,11 +239,11 @@ export const Dashboard = () => {
                 <BarChart
                   data={documentStats}
                   layout="vertical"
-                  margin={{ top: 10, right: 30, left: 60, bottom: 5 }}
+                  margin={{ top: 10, right: isMobile ? 10 : 30, left: isMobile ? 5 : 40, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={150} />
+                  <XAxis type="number" tick={{ fontSize: isMobile ? 10 : 12 }} />
+                  <YAxis dataKey="name" type="category" width={isMobile ? 85 : 150} tick={{ fontSize: isMobile ? 9 : 12 }} />
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="uploaded" name={t('dashboard.uploaded')} fill="#6366f1" radius={[0, 4, 4, 0]} />

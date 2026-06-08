@@ -23,6 +23,7 @@ import {
   Row,
   Col,
   Spin,
+  Progress,
 } from 'antd';
 import {
   SearchOutlined,
@@ -61,6 +62,7 @@ export const Students = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDiv, setSelectedDiv] = useState('');
   const [missingDocFilter, setMissingDocFilter] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -311,7 +313,7 @@ export const Students = () => {
   return (
     <div className="animate-slide-up">
       {/* Directory Title */}
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <Title level={2} style={{ margin: 0, fontWeight: 700 }}>
             {t('students.studentDirectory')}
@@ -320,14 +322,14 @@ export const Students = () => {
             {t('students.subtitle')}
           </Paragraph>
         </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <Space>
+        <div style={{ marginLeft: isMobile ? '0' : 'auto', width: isMobile ? '100%' : 'auto' }}>
+          <Space style={{ width: '100%', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
             {/* Export Dropdown */}
             <Select
               placeholder={t('students.exportRecords')}
               dropdownMatchSelectWidth={false}
               suffixIcon={<DownloadOutlined />}
-              style={{ width: 160 }}
+              style={{ width: isMobile ? 140 : 160 }}
               onChange={(val) => {
                 if (!val) return;
                 window.open(`/api/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
@@ -364,77 +366,165 @@ export const Students = () => {
 
       {/* Filter Card */}
       <Card bordered={false} style={{ marginBottom: '24px', boxShadow: 'var(--shadow-premium)', background: 'var(--bg-card)' }}>
-        <Space size="middle" wrap style={{ width: '100%' }}>
-          {/* Search Box */}
-          <Input
-            placeholder={t('students.searchPlaceholder')}
-            prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 220 }}
-            allowClear
-          />
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Input
+                placeholder={t('students.searchPlaceholder')}
+                prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ flex: 1 }}
+                allowClear
+              />
+              <Button 
+                type={showMobileFilters ? "primary" : "default"}
+                icon={<SearchOutlined />} 
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+              >
+                {t('common.filters', 'Filters')}
+              </Button>
+            </div>
+            
+            {showMobileFilters && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+                {/* Class Select */}
+                <Select
+                  placeholder={t('students.filterByClass')}
+                  value={selectedClass || undefined}
+                  onChange={(val) => setSelectedClass(val || '')}
+                  style={{ width: '100%' }}
+                  allowClear
+                >
+                  {classesList.map((c) => (
+                    <Option key={c} value={c}>
+                      {c}
+                    </Option>
+                  ))}
+                </Select>
 
-          {/* Class Select */}
-          <Select
-            placeholder={t('students.filterByClass')}
-            value={selectedClass || undefined}
-            onChange={(val) => setSelectedClass(val || '')}
-            style={{ width: 160 }}
-            allowClear
-          >
-            {classesList.map((c) => (
-              <Option key={c} value={c}>
-                {c}
-              </Option>
-            ))}
-          </Select>
+                {/* Division Select */}
+                <Select
+                  placeholder={t('students.filterByDivision')}
+                  value={selectedDiv || undefined}
+                  onChange={(val) => setSelectedDiv(val || '')}
+                  style={{ width: '100%' }}
+                  allowClear
+                >
+                  {divisionList.map((d) => (
+                    <Option key={d} value={d}>
+                      {t('students.division')} {d}
+                    </Option>
+                  ))}
+                </Select>
 
-          {/* Division Select */}
-          <Select
-            placeholder={t('students.filterByDivision')}
-            value={selectedDiv || undefined}
-            onChange={(val) => setSelectedDiv(val || '')}
-            style={{ width: 140 }}
-            allowClear
-          >
-            {divisionList.map((d) => (
-              <Option key={d} value={d}>
-                {t('students.division')} {d}
-              </Option>
-            ))}
-          </Select>
+                {/* Missing Document Filter */}
+                <Select
+                  placeholder={t('students.documentCompleteness')}
+                  value={missingDocFilter || undefined}
+                  onChange={(val) => setMissingDocFilter(val || '')}
+                  style={{ width: '100%' }}
+                  allowClear
+                >
+                  <Option value="any">{t('students.missingAnyDocument')}</Option>
+                  {documentTypes.map((doc) => (
+                    <Option key={doc.key} value={doc.key}>
+                      {t('students.missingDocument', { document: doc.name })}
+                    </Option>
+                  ))}
+                </Select>
 
-          {/* Missing Document Filter */}
-          <Select
-            placeholder={t('students.documentCompleteness')}
-            value={missingDocFilter || undefined}
-            onChange={(val) => setMissingDocFilter(val || '')}
-            style={{ width: 220 }}
-            allowClear
-          >
-            <Option value="any">{t('students.missingAnyDocument')}</Option>
-            {documentTypes.map((doc) => (
-              <Option key={doc.key} value={doc.key}>
-                {t('students.missingDocument', { document: doc.name })}
-              </Option>
-            ))}
-          </Select>
+                {/* Reset Filters */}
+                {(search || selectedClass || selectedDiv || missingDocFilter) && (
+                  <Button
+                    danger
+                    onClick={() => {
+                      setSearch('');
+                      setSelectedClass('');
+                      setSelectedDiv('');
+                      setMissingDocFilter('');
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    {t('common.clearFilters')}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <Space size="middle" wrap style={{ width: '100%' }}>
+            {/* Search Box */}
+            <Input
+              placeholder={t('students.searchPlaceholder')}
+              prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 220 }}
+              allowClear
+            />
 
-          {/* Reset Filters */}
-          {(search || selectedClass || selectedDiv || missingDocFilter) && (
-            <Button
-              onClick={() => {
-                setSearch('');
-                setSelectedClass('');
-                setSelectedDiv('');
-                setMissingDocFilter('');
-              }}
+            {/* Class Select */}
+            <Select
+              placeholder={t('students.filterByClass')}
+              value={selectedClass || undefined}
+              onChange={(val) => setSelectedClass(val || '')}
+              style={{ width: 160 }}
+              allowClear
             >
-              {t('common.clearFilters')}
-            </Button>
-          )}
-        </Space>
+              {classesList.map((c) => (
+                <Option key={c} value={c}>
+                  {c}
+                </Option>
+              ))}
+            </Select>
+
+            {/* Division Select */}
+            <Select
+              placeholder={t('students.filterByDivision')}
+              value={selectedDiv || undefined}
+              onChange={(val) => setSelectedDiv(val || '')}
+              style={{ width: 140 }}
+              allowClear
+            >
+              {divisionList.map((d) => (
+                <Option key={d} value={d}>
+                  {t('students.division')} {d}
+                </Option>
+              ))}
+            </Select>
+
+            {/* Missing Document Filter */}
+            <Select
+              placeholder={t('students.documentCompleteness')}
+              value={missingDocFilter || undefined}
+              onChange={(val) => setMissingDocFilter(val || '')}
+              style={{ width: 220 }}
+              allowClear
+            >
+              <Option value="any">{t('students.missingAnyDocument')}</Option>
+              {documentTypes.map((doc) => (
+                <Option key={doc.key} value={doc.key}>
+                  {t('students.missingDocument', { document: doc.name })}
+                </Option>
+              ))}
+            </Select>
+
+            {/* Reset Filters */}
+            {(search || selectedClass || selectedDiv || missingDocFilter) && (
+              <Button
+                onClick={() => {
+                  setSearch('');
+                  setSelectedClass('');
+                  setSelectedDiv('');
+                  setMissingDocFilter('');
+                }}
+              >
+                {t('common.clearFilters')}
+              </Button>
+            )}
+          </Space>
+        )}
       </Card>
 
       {/* Main Student Directory Table */}
@@ -446,57 +536,114 @@ export const Students = () => {
   }}
 >
   {isMobile ? (
-    <div>
-      {(studentsData?.data || []).map((student) => (
-        <Card
-          key={student._id}
-          size="small"
-          style={{
-            marginBottom: 12,
-            borderRadius: 12,
-          }}
-        >
-          <div style={{ marginBottom: 8 }}>
-            <strong>{student.name}</strong>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {(studentsData?.data || []).map((student) => {
+        const uploadedCount = getUploadedCount(student);
+        const completionRate = Math.round((uploadedCount / 9) * 100);
+        
+        // Initials helper
+        const nameParts = student.name ? student.name.split(' ').filter(Boolean) : [];
+        const initials = nameParts.length > 1 
+          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+          : (nameParts[0] ? nameParts[0].substring(0, 2).toUpperCase() : 'ST');
+          
+        return (
+          <Card
+            key={student._id}
+            bordered={false}
+            className="mobile-student-card"
+            styles={{ body: { padding: '16px' } }}
+          >
+            {/* Header: Avatar, Name, GR Number */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '14px' }}>
+              <div className={`student-avatar ${student.gender === 'female' ? 'female' : 'male'}`}>
+                {initials}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {student.name}
+                </h4>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    GR: <strong>{student.grNumber}</strong>
+                  </span>
+                  <Tag color="purple" style={{ margin: 0, fontSize: '10px', paddingInline: '4px', lineHeight: '1.4' }}>
+                    {student.class} - {student.division}
+                  </Tag>
+                </div>
+              </div>
+            </div>
 
-          <div><strong>{t('students.grShort')}</strong> {student.grNumber}</div>
-          <div><strong>{t('students.classShort')}</strong> {student.class} - {student.division}</div>
-          <div><strong>{t('students.fatherShort')}</strong> {student.fatherName}</div>
-          <div><strong>{t('students.mobileShort')}</strong> {student.mobile}</div>
+            {/* Details Rows */}
+            <div style={{ background: isDarkMode ? '#1f293d40' : '#f8fafc', padding: '10px 12px', borderRadius: '8px', marginBottom: '14px' }}>
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">{t('students.fatherName')}</span>
+                <span className="mobile-card-value">{student.fatherName}</span>
+              </div>
+              <div className="mobile-card-row" style={{ marginBottom: 0 }}>
+                <span className="mobile-card-label">{t('students.mobileNumber')}</span>
+                <span className="mobile-card-value" style={{ fontFamily: 'monospace' }}>{student.mobile}</span>
+              </div>
+            </div>
 
-          <div style={{ marginTop: 8 }}>
-            <Tag color={getUploadedCount(student) === 9 ? 'success' : 'warning'}>
-              {t('students.uploadedCount', { count: getUploadedCount(student), total: 9 })}
-            </Tag>
-          </div>
-
-          <Space style={{ marginTop: 10 }}>
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetails(student._id)}
-            />
-
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenForm(student)}
-            />
-
-            <Popconfirm
-              title={t('students.deleteStudentShort')}
-              onConfirm={() => deleteMutation.mutate(student._id)}
-            >
-              <Button
-                danger
-                size="small"
-                icon={<DeleteOutlined />}
+            {/* Progress Bar */}
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  {t('students.documents')}
+                </span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: uploadedCount === 9 ? '#10b981' : '#f59e0b' }}>
+                  {uploadedCount}/9 {t('students.uploaded')}
+                </span>
+              </div>
+              <Progress 
+                percent={completionRate} 
+                size="small" 
+                status={uploadedCount === 9 ? "success" : "normal"}
+                strokeColor={uploadedCount === 9 ? '#10b981' : '#6366f1'}
+                showInfo={false}
               />
-            </Popconfirm>
-          </Space>
-        </Card>
-      ))}
+            </div>
+
+            {/* Actions Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+              <Button
+                type="primary"
+                ghost
+                size="middle"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewDetails(student._id)}
+                style={{ borderRadius: '6px', fontSize: '12px' }}
+              >
+                {t('students.viewProfileUpload')}
+              </Button>
+              
+              <Space>
+                <Button
+                  size="middle"
+                  icon={<EditOutlined style={{ color: '#f59e0b' }} />}
+                  onClick={() => handleOpenForm(student)}
+                  style={{ borderRadius: '6px' }}
+                />
+                
+                <Popconfirm
+                  title={t('students.deleteStudentShort')}
+                  onConfirm={() => deleteMutation.mutate(student._id)}
+                  okText={t('common.yes')}
+                  cancelText={t('common.no')}
+                >
+                  <Button
+                    danger
+                    size="middle"
+                    icon={<DeleteOutlined />}
+                    style={{ borderRadius: '6px' }}
+                  />
+                </Popconfirm>
+              </Space>
+            </div>
+          </Card>
+        );
+      })}
     </div>
   ) : (
     <Table
@@ -535,12 +682,12 @@ export const Students = () => {
               {t('students.academicPersonalProfiles')}
             </div>
             <Row gutter={16}>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="name" label={t('students.studentFullName')} rules={[{ required: true, message: t('students.nameRequired') }]}>
                   <Input placeholder={t('students.studentNamePlaceholder')} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="grNumber" label={t('students.grNumber')} rules={[{ required: true, message: t('students.grRequired') }]}>
                   <Input placeholder={t('students.grPlaceholder')} disabled={!!editingStudent} />
                 </Form.Item>
@@ -548,7 +695,7 @@ export const Students = () => {
             </Row>
 
             <Row gutter={16}>
-              <Col span={8}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item name="class" label={t('students.class')} rules={[{ required: true, message: t('students.classRequired') }]}>
                   <Select placeholder={t('students.selectClass')}>
                     {classesList.map((c) => (
@@ -559,7 +706,7 @@ export const Students = () => {
                   </Select>
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item name="division" label={t('students.division')} rules={[{ required: true, message: t('students.divisionRequired') }]}>
                   <Select placeholder={t('students.selectDivision')}>
                     {divisionList.map((d) => (
@@ -570,7 +717,7 @@ export const Students = () => {
                   </Select>
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              <Col xs={24} md={8}>
                 <Form.Item name="gender" label={t('students.gender')} rules={[{ required: true, message: t('students.genderRequired') }]}>
                   <Radio.Group>
                     <Radio value="male">{t('students.male')}</Radio>
@@ -581,12 +728,12 @@ export const Students = () => {
             </Row>
 
             <Row gutter={16}>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="dob" label={t('students.dob')} rules={[{ required: true, message: t('students.dobRequired') }]}>
                   <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="mobile" label={t('students.mobileNumber')} rules={[{ required: true, message: t('students.mobileRequired') }]}>
                   <Input placeholder={t('students.mobilePlaceholder')} maxLength={10} />
                 </Form.Item>
@@ -597,12 +744,12 @@ export const Students = () => {
               {t('students.familyDetails')}
             </div>
             <Row gutter={16}>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="fatherName" label={t('students.fatherFullName')} rules={[{ required: true, message: t('students.fatherRequired') }]}>
                   <Input placeholder={t('students.fatherName')} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="motherName" label={t('students.motherFullName')} rules={[{ required: true, message: t('students.motherRequired') }]}>
                   <Input placeholder={t('students.motherName')} />
                 </Form.Item>
@@ -617,17 +764,17 @@ export const Students = () => {
             </Form.Item>
 
             <Row gutter={16}>
-              <Col span={8}>
+              <Col xs={24} sm={8}>
                 <Form.Item name="village" label={t('students.village')}>
                   <Input placeholder={t('students.village')} />
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              <Col xs={24} sm={8}>
                 <Form.Item name="taluka" label={t('students.taluka')}>
                   <Input placeholder={t('students.taluka')} />
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              <Col xs={24} sm={8}>
                 <Form.Item name="district" label={t('students.district')}>
                   <Input placeholder={t('students.district')} />
                 </Form.Item>
@@ -675,7 +822,7 @@ export const Students = () => {
             return (
               <div style={{ marginTop: '16px' }}>
                 {/* Profile Meta Cards */}
-                <Descriptions title={t('students.studentBio')} bordered size="small" column={2}>
+                <Descriptions title={t('students.studentBio')} bordered size="small" column={{ xs: 1, sm: 1, md: 2 }}>
                   <Descriptions.Item label={t('students.name')} span={2}>
                     <span style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{student.name}</span>
                   </Descriptions.Item>
@@ -711,6 +858,8 @@ export const Students = () => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '8px',
                     }}
                   >
                     <span>{t('students.verificationFolders', { count: getUploadedCount(student), total: 9 })}</span>
@@ -724,10 +873,9 @@ export const Students = () => {
                     {documentTypes.map((doc) => {
                       const docRecord = student.documents?.[doc.key];
                       const isUploaded = !!(docRecord && docRecord.url);
-                      
 
                       return (
-                        <Col span={8} key={doc.key}>
+                        <Col xs={24} sm={12} md={8} key={doc.key}>
                           <Card
                             size="small"
                             style={{
@@ -735,13 +883,14 @@ export const Students = () => {
                               background: isDarkMode ? (isUploaded ? '#064e3b20' : 'transparent') : (isUploaded ? '#f0fdf4' : 'transparent'),
                               display: 'flex',
                               flexDirection: 'column',
-                              justifyContent: 'between',
-                              height: '140px',
+                              justifyContent: 'space-between',
+                              minHeight: '120px',
+                              height: '100%',
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'flex-start', width: '100%', marginBottom: 8 }}>
-                              <Badge status={isUploaded ? 'success' : 'default'} />
-                              <span style={{ fontWeight: 500, fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '160px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', marginBottom: 8 }}>
+                              <Badge status={isUploaded ? 'success' : 'default'} style={{ marginTop: 4, marginRight: 8 }} />
+                              <span style={{ fontWeight: 600, fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                                 {doc.name}
                               </span>
                             </div>
@@ -751,32 +900,34 @@ export const Students = () => {
                                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {docRecord.fileName}
                                 </div>
-                                <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                <Space>
-  <Button
-    type="link"
-    size="small"
-    icon={<EyeOutlined />}
-    onClick={() => window.open(docRecord.url, '_blank')}
-  >
-    {t('common.view')}
-  </Button>
+                                <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '4px' }}>
+                                  <Space size={4}>
+                                    <Button
+                                      type="link"
+                                      size="small"
+                                      icon={<EyeOutlined />}
+                                      onClick={() => window.open(docRecord.url, '_blank')}
+                                      style={{ padding: '0 4px', height: 'auto' }}
+                                    >
+                                      {t('common.view')}
+                                    </Button>
 
-  <Button
-    type="link"
-    size="small"
-    icon={<DownloadOutlined />}
-    onClick={() => {
-      const downloadUrl = docRecord.url.replace(
-        '/upload/',
-        '/upload/fl_attachment/'
-      );
-      window.open(downloadUrl, '_blank');
-    }}
-  >
-    {t('common.download')}
-  </Button>
-</Space>
+                                    <Button
+                                      type="link"
+                                      size="small"
+                                      icon={<DownloadOutlined />}
+                                      onClick={() => {
+                                        const downloadUrl = docRecord.url.replace(
+                                          '/upload/',
+                                          '/upload/fl_attachment/'
+                                        );
+                                        window.open(downloadUrl, '_blank');
+                                      }}
+                                      style={{ padding: '0 4px', height: 'auto' }}
+                                    >
+                                      {t('common.download')}
+                                    </Button>
+                                  </Space>
 
                                   <Popconfirm
                                     title={t('students.removeFileTitle')}
@@ -788,6 +939,7 @@ export const Students = () => {
                                       type="text"
                                       size="small"
                                       icon={<DeleteOutlined style={{ color: '#ef4444' }} />}
+                                      style={{ height: 'auto', padding: '0 4px' }}
                                     />
                                   </Popconfirm>
                                 </Space>
