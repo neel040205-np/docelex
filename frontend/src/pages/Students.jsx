@@ -412,21 +412,8 @@ export const Students = () => {
     return Object.values(student.documents).filter((doc) => doc && doc.url).length;
   };
 
-  const classesList = [
-    'Balvatika',
-    'Class 1',
-    'Class 2',
-    'Class 3',
-    'Class 4',
-    'Class 5',
-    'Class 6',
-    'Class 7',
-    'Class 8',
-    'Class 9',
-    'Class 10',
-    'Class 11',
-    'Class 12',
-  ];
+  // Class & Divisions
+  const classesList = ['Balvatika', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
   const divisionList = ['A', 'B', 'C', 'D'];
 
   const documentTypes = [
@@ -550,7 +537,8 @@ export const Students = () => {
               style={{ width: isMobile ? 140 : 160 }}
               onChange={(val) => {
                 if (!val) return;
-                window.open(`/api/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
+                const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
+                window.open(`${baseUrl}/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
               }}
             >
               <Option value="excel">
@@ -1024,7 +1012,8 @@ export const Students = () => {
                 icon={<DownloadOutlined />}
                 size="small"
                 onClick={() => {
-                  window.open(`/api/students/${viewingStudentId}/download-documents?token=${localStorage.getItem('token')}`, '_blank');
+                  const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
+                  window.open(`${baseUrl}/students/${viewingStudentId}/download-documents?token=${localStorage.getItem('token')}`, '_blank');
                 }}
                 style={{ borderRadius: '6px' }}
               >

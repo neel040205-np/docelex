@@ -3,7 +3,7 @@ import { message } from 'antd';
 import i18n from '../i18n';
 
 const client = axios.create({
-  baseURL: 'https://docelex.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api',
 });
 
 // Request Interceptor: Attach JWT Token automatically

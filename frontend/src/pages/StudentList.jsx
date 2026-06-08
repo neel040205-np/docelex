@@ -116,21 +116,7 @@ export const StudentList = () => {
   };
 
   // Lists for dropdowns
-  const classesList = [
-    'Balvatika',
-    'Class 1',
-    'Class 2',
-    'Class 3',
-    'Class 4',
-    'Class 5',
-    'Class 6',
-    'Class 7',
-    'Class 8',
-    'Class 9',
-    'Class 10',
-    'Class 11',
-    'Class 12',
-  ];
+  const classesList = ['Balvatika', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
   const divisionList = ['A', 'B', 'C', 'D'];
   const categoriesList = ['General', 'OBC', 'SC', 'ST', 'EWS'];
   const statusList = ['Pending', 'Verified', 'Rejected'];
@@ -286,7 +272,8 @@ export const StudentList = () => {
               style={{ width: isMobile ? 140 : 160 }}
               onChange={(val) => {
                 if (!val) return;
-                window.open(`/api/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
+                const baseUrl = import.meta.env.VITE_API_URL || 'https://docelex.onrender.com/api';
+                window.open(`${baseUrl}/students/export/${val}?token=${localStorage.getItem('token')}`, '_blank');
               }}
             >
               <Option value="excel">

@@ -9,16 +9,6 @@ const PDFDocument = require('pdfkit');
 const archiver = require('archiver');
 const axios = require('axios');
 
-// Helper to convert Google Drive share link to a direct download link
-const getGoogleDriveDownloadUrl = (url) => {
-  if (!url) return null;
-  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (match && match[1]) {
-    return `https://docs.google.com/uc?export=download&id=${match[1]}&confirm=t`;
-  }
-  return url;
-};
-
 // Define valid document fields (11 required documents)
 const VALID_DOCUMENTS = [
   'birthCertificate',
@@ -83,6 +73,46 @@ const deletePhysicalFile = async (publicId) => {
   }
 };
 
+// Helper to convert Google Drive shareable link to a direct download link
+const getGoogleDriveDownloadUrl = (url) => {
+  if (!url) return null;
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://docs.google.com/uc?export=download&id=${match[1]}&confirm=t`;
+  }
+  return url;
+};
+
+// @desc    Get the next serial number (srNumber) based on student count & max SR number
+// @route   GET /api/students/next-sr
+// @access  Private
+exports.getNextSrNumber = async (req, res) => {
+  try {
+    const students = await Student.find({}, { srNumber: 1 });
+    let maxSr = 0;
+    students.forEach((s) => {
+      if (s.srNumber) {
+        const match = s.srNumber.match(/\d+/);
+        if (match) {
+          const val = parseInt(match[0], 10);
+          if (val > maxSr) {
+            maxSr = val;
+          }
+        }
+      }
+    });
+    const count = students.length;
+    const nextSr = Math.max(count + 1, maxSr + 1);
+    res.status(200).json({
+      success: true,
+      nextSrNumber: String(nextSr),
+    });
+  } catch (error) {
+    console.error('Error getting next SR number:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Download all documents for all students in a ZIP
 // @route   GET /api/students/download/all
 // @access  Private
@@ -106,7 +136,7 @@ exports.downloadAllDocuments = async (req, res) => {
 
         try {
           if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
-            // Local file - read directly from disk
+            // Local file - read directly from disk to avoid network resolution issues
             const filePath = path.join(__dirname, '../../uploads', doc.publicId);
             if (fs.existsSync(filePath)) {
               archive.file(filePath, { name: `${folderName}/${doc.fileName}` });
@@ -114,7 +144,7 @@ exports.downloadAllDocuments = async (req, res) => {
               console.error(`Local file not found for ${studentWithDocs.name}: ${filePath}`);
             }
           } else {
-            // Remote file (Cloudinary or Google Drive)
+            // Cloudinary or Google Drive remote URL
             let downloadUrl = doc.url;
             if (doc.publicId && doc.publicId.startsWith('drive-')) {
               downloadUrl = getGoogleDriveDownloadUrl(doc.url);
@@ -181,7 +211,7 @@ exports.downloadStudentDocuments = async (req, res) => {
             console.error(`Local file not found: ${filePath}`);
           }
         } else {
-          // Remote file (Cloudinary or Google Drive)
+          // Cloudinary or Google Drive remote URL
           let downloadUrl = doc.url;
           if (doc.publicId && doc.publicId.startsWith('drive-')) {
             downloadUrl = getGoogleDriveDownloadUrl(doc.url);
@@ -244,37 +274,6 @@ exports.checkDuplicate = async (req, res) => {
   } catch (error) {
     console.error('Error checking duplicate:', error);
     res.status(500).json({ success: false, message: 'Server error' });
-  }
-};
-
-// @desc    Get the next serial number (srNumber) based on student count and existing max numeric sr
-// @route   GET /api/students/next-sr
-// @access  Private
-exports.getNextSrNumber = async (req, res) => {
-  try {
-    const students = await Student.find({}, { srNumber: 1 });
-    let maxSr = 0;
-    students.forEach((s) => {
-      if (s.srNumber) {
-        const match = s.srNumber.match(/\d+/);
-        if (match) {
-          const val = parseInt(match[0], 10);
-          if (val > maxSr) {
-            maxSr = val;
-          }
-        }
-      }
-    });
-    const count = students.length;
-    const nextSr = Math.max(count + 1, maxSr + 1);
-
-    res.status(200).json({
-      success: true,
-      nextSrNumber: String(nextSr),
-    });
-  } catch (error) {
-    console.error('Error getting next SR number:', error);
-    res.status(500).json({ success: false, message: 'Server error getting next SR number' });
   }
 };
 
