@@ -295,7 +295,7 @@ const seedData = async () => {
 
     console.log('Seeding teacher accounts...');
     const teacherUser = await User.create({
-      name: 'Teacher',
+      name: 'Elex',
       email: 'teacher@docelex.com',
       password: 'Elex@1234',
       role: 'teacher',
