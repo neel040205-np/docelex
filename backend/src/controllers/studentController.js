@@ -1072,15 +1072,24 @@ exports.importStudents = async (req, res) => {
     }
 
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      return res.status(400).json({ success: false, message: 'No sheets found in the uploaded file' });
+    }
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) {
+      return res.status(400).json({ success: false, message: 'The active sheet could not be read or is empty' });
+    }
     const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
     if (rows.length === 0) {
       return res.status(400).json({ success: false, message: 'The uploaded file contains no data' });
     }
 
-    const normalizeHeader = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizeHeader = (str) => {
+      if (str === null || str === undefined) return '';
+      return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+    };
 
     const FIELD_MAP = {
       srnumber: 'srNumber',
@@ -1299,7 +1308,7 @@ exports.importStudents = async (req, res) => {
     });
   } catch (error) {
     console.error('Import processing crash:', error);
-    res.status(500).json({ success: false, message: 'Server error processing student import spreadsheet' });
+    res.status(500).json({ success: false, message: `Server error processing student import spreadsheet: ${error.message}` });
   }
 };
 
