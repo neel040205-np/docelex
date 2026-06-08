@@ -48,6 +48,7 @@ exports.downloadAllDocuments = async (req, res) => {
 // Helper to delete physical file
 const deletePhysicalFile = async (publicId) => {
   if (!publicId) return;
+  if (publicId.startsWith('drive-')) return;
 
   if (isCloudinaryConfigured()) {
     try {
@@ -364,15 +365,33 @@ exports.uploadDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid document type specified' });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    let fileUrl;
+    let filePublicId;
+    let originalName;
+
+    if (req.file) {
+      fileUrl = req.file.path;
+      filePublicId = req.file.filename;
+      originalName = req.file.originalname;
+
+      if (!isCloudinaryConfigured()) {
+        fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        filePublicId = req.file.filename;
+      }
+    } else if (req.body.driveUrl) {
+      fileUrl = req.body.driveUrl;
+      filePublicId = `drive-${Date.now()}`;
+      originalName = req.body.fileName || 'Google Drive File';
+    } else {
+      return res.status(400).json({ success: false, message: 'Please upload a file or provide a Google Drive URL' });
     }
 
     const student = await Student.findById(id);
     if (!student) {
-      // Clean up uploaded file if student doesn't exist
-      const fileIdToDelete = isCloudinaryConfigured() ? req.file.filename : req.file.filename;
-      await deletePhysicalFile(fileIdToDelete);
+      if (req.file) {
+        const fileIdToDelete = req.file.filename;
+        await deletePhysicalFile(fileIdToDelete);
+      }
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
@@ -381,22 +400,12 @@ exports.uploadDocument = async (req, res) => {
       await deletePhysicalFile(student.documents[documentType].publicId);
     }
 
-    // Build file URL
-    let fileUrl = req.file.path;
-    let filePublicId = req.file.filename;
-
-    if (!isCloudinaryConfigured()) {
-      // local setup: generate server URL
-      fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-      filePublicId = req.file.filename;
-    }
-
     // Update student document details
     student.documents = student.documents || {};
     student.documents[documentType] = {
       url: fileUrl,
       publicId: filePublicId,
-      fileName: req.file.originalname,
+      fileName: originalName,
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
     };
@@ -410,7 +419,7 @@ exports.uploadDocument = async (req, res) => {
       performedBy: req.user._id,
       studentId: student._id,
       studentName: student.name,
-      details: `Uploaded ${documentType} for student ${student.name} (${req.file.originalname})`,
+      details: `Uploaded ${documentType} for student ${student.name} (${originalName})`,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 

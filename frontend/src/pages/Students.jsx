@@ -38,6 +38,7 @@ import {
   FileTextOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  GoogleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Grid } from 'antd';
@@ -72,6 +73,10 @@ export const Students = () => {
   const [editingStudent, setEditingStudent] = useState(null);
   const [viewingStudentId, setViewingStudentId] = useState(null);
   const [uploadingDoc, setUploadingDoc] = useState({});
+  const [driveModalOpen, setDriveModalOpen] = useState(false);
+  const [currentDocKey, setCurrentDocKey] = useState('');
+  const [driveLink, setDriveLink] = useState('');
+  const [driveFileName, setDriveFileName] = useState('');
 
   const [form] = Form.useForm();
 
@@ -200,6 +205,48 @@ export const Students = () => {
       setUploadingDoc((prev) => ({ ...prev, [docType]: false }));
     }
     return false; // Prevent auto Upload of AntD
+  };
+
+  const handleOpenDriveModal = (docType) => {
+    setCurrentDocKey(docType);
+    setDriveLink('');
+    // Pre-populate fileName with a nice descriptive name
+    const docNameTranslated = t(`documents.${docType}`).replace(/\s+/g, '_');
+    setDriveFileName(`${docNameTranslated}_Link.pdf`);
+    setDriveModalOpen(true);
+  };
+
+  const submitDriveLink = async () => {
+    if (!driveLink) {
+      message.error(t('students.driveLinkRequired', 'Please enter a Google Drive link'));
+      return;
+    }
+    
+    if (!driveLink.startsWith('http://') && !driveLink.startsWith('https://')) {
+      message.error(t('students.invalidUrl', 'Please enter a valid URL'));
+      return;
+    }
+
+    setUploadingDoc((prev) => ({ ...prev, [currentDocKey]: true }));
+    setDriveModalOpen(false);
+
+    try {
+      const response = await client.post(`/students/${viewingStudentId}/document/${currentDocKey}`, {
+        driveUrl: driveLink,
+        fileName: driveFileName || `${currentDocKey}_Link.pdf`
+      });
+      if (response.success) {
+        message.success(t('students.documentUploadedSuccess', { document: t(`documents.${currentDocKey}`) }));
+        queryClient.invalidateQueries(['student-detail', viewingStudentId]);
+        queryClient.invalidateQueries(['students']);
+        queryClient.invalidateQueries(['stats']);
+      }
+    } catch (err) {
+      console.error(err);
+      message.error(err.message || 'Failed to upload link');
+    } finally {
+      setUploadingDoc((prev) => ({ ...prev, [currentDocKey]: false }));
+    }
   };
 
   const getUploadedCount = (student) => {
@@ -946,11 +993,33 @@ export const Students = () => {
                               </div>
                             ) : (
                               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', flex: 1, height: '100%' }}>
-                                <Upload
-                                  beforeUpload={(file) => handleDocumentUpload(file, doc.key)}
-                                  showUploadList={false}
-                                  maxCount={1}
-                                  accept=".pdf,image/*"
+                                <Dropdown
+                                  menu={{
+                                    items: [
+                                      {
+                                        key: 'computer',
+                                        icon: <UploadOutlined />,
+                                        label: (
+                                          <Upload
+                                            beforeUpload={(file) => handleDocumentUpload(file, doc.key)}
+                                            showUploadList={false}
+                                            maxCount={1}
+                                            accept=".pdf,image/*"
+                                            style={{ width: '100%', display: 'block' }}
+                                          >
+                                            <div style={{ width: '100%' }}>{t('students.uploadFromComputer', 'Upload from Computer')}</div>
+                                          </Upload>
+                                        ),
+                                      },
+                                      {
+                                        key: 'drive',
+                                        icon: <GoogleOutlined />,
+                                        label: t('students.uploadFromDrive', 'Upload from Google Drive'),
+                                        onClick: () => handleOpenDriveModal(doc.key),
+                                      },
+                                    ],
+                                  }}
+                                  trigger={['click']}
                                 >
                                   <Button
                                     type="dashed"
@@ -959,9 +1028,9 @@ export const Students = () => {
                                     loading={uploadingDoc[doc.key]}
                                     style={{ fontSize: 12 }}
                                   >
-                                    {t('students.uploadFile')}
+                                    {t('students.uploadFile', 'Upload File')}
                                   </Button>
-                                </Upload>
+                                </Dropdown>
                                 <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
                                   {t('students.uploadHint')}
                                 </span>
@@ -977,6 +1046,49 @@ export const Students = () => {
             );
           })()
         )}
+      </Modal>
+      {/* 3. Google Drive Link Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <GoogleOutlined style={{ color: '#4285F4', fontSize: '20px' }} />
+            <span>{t('students.uploadFromDrive', 'Upload from Google Drive')}</span>
+          </div>
+        }
+        open={driveModalOpen}
+        onCancel={() => setDriveModalOpen(false)}
+        onOk={submitDriveLink}
+        okText={t('common.submit', 'Submit')}
+        cancelText={t('common.cancel', 'Cancel')}
+        destroyOnClose
+        width={480}
+      >
+        <div style={{ marginTop: '16px' }}>
+          <Form layout="vertical">
+            <Form.Item
+              label={t('students.googleDriveLink', 'Google Drive Shareable Link')}
+              required
+              help={t('students.driveLinkHint', 'Make sure the file sharing permission is set to "Anyone with the link can view".')}
+            >
+              <Input
+                placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                value={driveLink}
+                onChange={(e) => setDriveLink(e.target.value)}
+                prefix={<GoogleOutlined style={{ color: 'var(--text-secondary)' }} />}
+              />
+            </Form.Item>
+            
+            <Form.Item
+              label={t('students.fileName', 'Document File Name')}
+            >
+              <Input
+                placeholder="e.g. Birth_Certificate.pdf"
+                value={driveFileName}
+                onChange={(e) => setDriveFileName(e.target.value)}
+              />
+            </Form.Item>
+          </Form>
+        </div>
       </Modal>
     </div>
   );
