@@ -62,6 +62,8 @@ export const StudentList = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
 
   // Excel/CSV Import State
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -120,6 +122,19 @@ export const StudentList = () => {
     setDefaultMobile('');
   };
 
+  const handleTableChange = (pagination, filters, sorter) => {
+    setPage(pagination.current);
+    setPageSize(pagination.pageSize);
+    
+    if (sorter && sorter.field) {
+      setSortBy(sorter.field);
+      setSortOrder(sorter.order === 'descend' ? 'desc' : 'asc');
+    } else {
+      setSortBy('');
+      setSortOrder('');
+    }
+  };
+
   const uploadProps = {
     onRemove: (file) => {
       setFileList([]);
@@ -150,6 +165,8 @@ export const StudentList = () => {
       verificationStatus,
       admissionYear,
       missingDocFilter,
+      sortBy,
+      sortOrder,
     ],
     queryFn: () =>
       client.get('/students', {
@@ -163,6 +180,8 @@ export const StudentList = () => {
           verificationStatus,
           admissionYear,
           missingDocument: missingDocFilter,
+          sortBy,
+          sortOrder,
         },
       }),
   });
@@ -221,6 +240,7 @@ export const StudentList = () => {
       dataIndex: 'grNumber',
       key: 'grNumber',
       width: '110px',
+      sorter: true,
       render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>,
     },
     {
@@ -228,12 +248,14 @@ export const StudentList = () => {
       dataIndex: 'srNumber',
       key: 'srNumber',
       width: '110px',
+      sorter: true,
       render: (text) => <span style={{ fontFamily: 'monospace' }}>{text || '-'}</span>,
     },
     {
       title: t('students.studentName', 'Student Name'),
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (text, record) => (
         <div>
           <span style={{ fontWeight: 500, color: 'var(--primary-color)' }}>
@@ -248,6 +270,8 @@ export const StudentList = () => {
     {
       title: t('students.classDiv', 'Class / Div'),
       key: 'classDiv',
+      dataIndex: 'class',
+      sorter: true,
       render: (_, record) => `${record.class} - ${record.division}`,
     },
     {
@@ -665,15 +689,12 @@ export const StudentList = () => {
             dataSource={studentsData?.data || []}
             rowKey="_id"
             loading={isLoading}
+            onChange={handleTableChange}
             pagination={{
               current: page,
               pageSize: pageSize,
               total: studentsData?.pagination?.total || 0,
               showSizeChanger: true,
-              onChange: (p, ps) => {
-                setPage(p);
-                setPageSize(ps);
-              },
             }}
           />
         )}

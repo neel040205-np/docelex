@@ -371,11 +371,22 @@ exports.getStudents = async (req, res) => {
       }
     }
 
+    // Dynamic Sorting
+    let sortQuery = { createdAt: -1 };
+    if (req.query.sortBy) {
+      const field = req.query.sortBy;
+      const order = req.query.sortOrder === 'desc' ? -1 : 1;
+      if (['srNumber', 'grNumber', 'name', 'class', 'division', 'createdAt'].includes(field)) {
+        sortQuery = { [field]: order };
+      }
+    }
+
     const total = await Student.countDocuments(query);
     const students = await Student.find(query)
       .populate('createdBy', 'name')
       .populate('updatedBy', 'name')
-      .sort({ createdAt: -1 })
+      .sort(sortQuery)
+      .collation({ locale: 'en', numericOrdering: true })
       .skip(skip)
       .limit(limit);
 
