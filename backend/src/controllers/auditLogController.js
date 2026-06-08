@@ -5,6 +5,7 @@ const AuditLog = require('../models/AuditLog');
 // @access  Private (Admin Only)
 exports.getAuditLogs = async (req, res) => {
   try {
+    const AuditLogModel = req.models.AuditLog;
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
     const skip = (page - 1) * limit;
@@ -27,8 +28,8 @@ exports.getAuditLogs = async (req, res) => {
       ];
     }
 
-    const total = await AuditLog.countDocuments(query);
-    const logs = await AuditLog.find(query)
+    const total = await AuditLogModel.countDocuments(query);
+    const logs = await AuditLogModel.find(query)
       .populate('performedBy', 'name email role')
       .populate('studentId', 'name grNumber')
       .sort({ createdAt: -1 })

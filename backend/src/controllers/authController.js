@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
+const { getAuditLogModel } = require('../utils/dynamicModels');
 
 // Generate JWT token helper
 const generateToken = (id) => {
@@ -27,6 +27,9 @@ const sendAuthResponse = (res, user, statusCode = 200) => {
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
 // @access  Public
+// @desc    Auth user & get token
+// @route   POST /api/auth/login
+// @access  Public
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -49,8 +52,9 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Write audit log for login
-    await AuditLog.create({
+    // Write audit log for login using dynamic scoped model
+    const AuditLogModel = getAuditLogModel(user._id);
+    await AuditLogModel.create({
       action: 'USER_LOGIN',
       performedBy: user._id,
       details: `${user.name} logged in successfully`,

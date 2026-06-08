@@ -25,9 +25,9 @@ const VALID_DOCUMENTS = [
 ];
 
 // Helper to attach documents object to a student object
-const attachDocumentsToStudent = async (student) => {
+const attachDocumentsToStudent = async (student, DocumentModel) => {
   if (!student) return null;
-  const docs = await Document.find({ studentId: student._id }).populate('verifiedBy', 'name');
+  const docs = await DocumentModel.find({ studentId: student._id }).populate('verifiedBy', 'name');
   const documentsObj = {};
   
   docs.forEach((doc) => {
@@ -98,7 +98,7 @@ const getDocumentFileName = (doc) => {
 // @access  Private
 exports.getNextSrNumber = async (req, res) => {
   try {
-    const students = await Student.find({}, { srNumber: 1 });
+    const students = await req.models.Student.find({}, { srNumber: 1 });
     let maxSr = 0;
     students.forEach((s) => {
       if (s.srNumber) {
@@ -128,7 +128,7 @@ exports.getNextSrNumber = async (req, res) => {
 // @access  Private
 exports.downloadAllDocuments = async (req, res) => {
   try {
-    const students = await Student.find();
+    const students = await req.models.Student.find();
     res.attachment('students_documents.zip');
 
     const archive = new ZipArchive({
@@ -138,7 +138,7 @@ exports.downloadAllDocuments = async (req, res) => {
     archive.pipe(res);
 
     for (const student of students) {
-      const studentWithDocs = await attachDocumentsToStudent(student);
+      const studentWithDocs = await attachDocumentsToStudent(student, req.models.Document);
       const folderName = studentWithDocs.name.replace(/[^\w\s]/gi, '');
 
       for (const [key, doc] of Object.entries(studentWithDocs.documents || {})) {
@@ -192,13 +192,13 @@ exports.downloadAllDocuments = async (req, res) => {
 // @access  Private
 exports.downloadStudentDocuments = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await req.models.Student.findById(req.params.id);
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    const studentWithDocs = await attachDocumentsToStudent(student);
+    const studentWithDocs = await attachDocumentsToStudent(student, req.models.Document);
     
     // Fallback to name if firstName is not present (e.g. for legacy records)
     let rawName = 'student';
@@ -292,7 +292,7 @@ exports.checkDuplicate = async (req, res) => {
       query._id = { $ne: excludeId };
     }
 
-    const count = await Student.countDocuments(query);
+    const count = await req.models.Student.countDocuments(query);
     res.status(200).json({
       success: true,
       exists: count > 0,
@@ -359,10 +359,10 @@ exports.getStudents = async (req, res) => {
     if (req.query.missingDocument) {
       const docType = req.query.missingDocument;
       if (VALID_DOCUMENTS.includes(docType)) {
-        const hasDocStudentIds = await Document.find({ documentType: docType }).distinct('studentId');
+        const hasDocStudentIds = await req.models.Document.find({ documentType: docType }).distinct('studentId');
         query._id = { $nin: hasDocStudentIds };
       } else if (docType === 'any') {
-        const docCounts = await Document.aggregate([
+        const docCounts = await req.models.Document.aggregate([
           { $group: { _id: '$studentId', count: { $sum: 1 } } },
           { $match: { count: VALID_DOCUMENTS.length } },
         ]);
@@ -381,8 +381,8 @@ exports.getStudents = async (req, res) => {
       }
     }
 
-    const total = await Student.countDocuments(query);
-    const students = await Student.find(query)
+    const total = await req.models.Student.countDocuments(query);
+    const students = await req.models.Student.find(query)
       .populate('createdBy', 'name')
       .populate('updatedBy', 'name')
       .sort(sortQuery)
@@ -393,7 +393,7 @@ exports.getStudents = async (req, res) => {
     // Attach document completeness count for the list view
     const studentsWithDocs = [];
     for (const student of students) {
-      const sWithDocs = await attachDocumentsToStudent(student);
+      const sWithDocs = await attachDocumentsToStudent(student, req.models.Document);
       studentsWithDocs.push(sWithDocs);
     }
 
@@ -419,7 +419,7 @@ exports.getStudents = async (req, res) => {
 // @access  Private
 exports.getStudentById = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id)
+    const student = await req.models.Student.findById(req.params.id)
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email');
 
@@ -427,7 +427,7 @@ exports.getStudentById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    const studentWithDocs = await attachDocumentsToStudent(student);
+    const studentWithDocs = await attachDocumentsToStudent(student, req.models.Document);
 
     res.status(200).json({
       success: true,
@@ -456,7 +456,7 @@ exports.createStudent = async (req, res) => {
     }
 
     // Check duplicate GR
-    const existingGr = await Student.findOne({ grNumber });
+    const existingGr = await req.models.Student.findOne({ grNumber });
     if (existingGr) {
       return res.status(400).json({
         success: false,
@@ -465,7 +465,7 @@ exports.createStudent = async (req, res) => {
     }
 
     // Check duplicate SR
-    const existingSr = await Student.findOne({ srNumber });
+    const existingSr = await req.models.Student.findOne({ srNumber });
     if (existingSr) {
       return res.status(400).json({
         success: false,
@@ -478,10 +478,10 @@ exports.createStudent = async (req, res) => {
     req.body.updatedBy = req.user._id;
     req.body.verificationStatus = 'Pending';
 
-    const student = await Student.create(req.body);
+    const student = await req.models.Student.create(req.body);
 
     // Audit Log entry
-    await AuditLog.create({
+    await req.models.AuditLog.create({
       action: 'CREATE_STUDENT',
       performedBy: req.user._id,
       studentId: student._id,
@@ -510,7 +510,7 @@ exports.createStudent = async (req, res) => {
 exports.updateStudent = async (req, res) => {
   try {
     const { grNumber, srNumber, aadhaarNumber, mobileNumber1 } = req.body;
-    let student = await Student.findById(req.params.id);
+    let student = await req.models.Student.findById(req.params.id);
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
@@ -527,7 +527,7 @@ exports.updateStudent = async (req, res) => {
 
     // Check GR number conflict
     if (grNumber && grNumber !== student.grNumber) {
-      const grConflict = await Student.findOne({ grNumber });
+      const grConflict = await req.models.Student.findOne({ grNumber });
       if (grConflict) {
         return res.status(400).json({
           success: false,
@@ -538,7 +538,7 @@ exports.updateStudent = async (req, res) => {
 
     // Check SR number conflict
     if (srNumber && srNumber !== student.srNumber) {
-      const srConflict = await Student.findOne({ srNumber });
+      const srConflict = await req.models.Student.findOne({ srNumber });
       if (srConflict) {
         return res.status(400).json({
           success: false,
@@ -568,13 +568,13 @@ exports.updateStudent = async (req, res) => {
     req.body.updatedBy = req.user._id;
 
     // Update
-    student = await Student.findByIdAndUpdate(req.params.id, req.body, {
+    student = await req.models.Student.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
     if (changes.length > 0) {
-      await AuditLog.create({
+      await req.models.AuditLog.create({
         action: 'UPDATE_STUDENT',
         performedBy: req.user._id,
         studentId: student._id,
@@ -603,14 +603,14 @@ exports.updateStudent = async (req, res) => {
 // @access  Private (Admin Only)
 exports.deleteStudent = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await req.models.Student.findById(req.params.id);
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
     // Delete all files from storage and database
-    const docs = await Document.find({ studentId: student._id });
+    const docs = await req.models.Document.find({ studentId: student._id });
     const deletePromises = [];
     docs.forEach((doc) => {
       if (doc.publicId) {
@@ -619,13 +619,13 @@ exports.deleteStudent = async (req, res) => {
     });
 
     await Promise.all(deletePromises);
-    await Document.deleteMany({ studentId: student._id });
+    await req.models.Document.deleteMany({ studentId: student._id });
 
     // Delete student record
-    await Student.findByIdAndDelete(req.params.id);
+    await req.models.Student.findByIdAndDelete(req.params.id);
 
     // Log deletion
-    await AuditLog.create({
+    await req.models.AuditLog.create({
       action: 'DELETE_STUDENT',
       performedBy: req.user._id,
       studentName: student.name,
@@ -675,7 +675,7 @@ exports.uploadDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please upload a file or provide a Google Drive URL' });
     }
 
-    const student = await Student.findById(id);
+    const student = await req.models.Student.findById(id);
     if (!student) {
       if (req.file) {
         await deletePhysicalFile(req.file.filename);
@@ -684,13 +684,13 @@ exports.uploadDocument = async (req, res) => {
     }
 
     // Check if document already exists, if so delete physical file
-    const existingDoc = await Document.findOne({ studentId: id, documentType });
+    const existingDoc = await req.models.Document.findOne({ studentId: id, documentType });
     if (existingDoc && existingDoc.publicId) {
       await deletePhysicalFile(existingDoc.publicId);
     }
 
     // Save/Update Document
-    await Document.findOneAndUpdate(
+    await req.models.Document.findOneAndUpdate(
       { studentId: id, documentType },
       {
         fileUrl,
@@ -704,10 +704,10 @@ exports.uploadDocument = async (req, res) => {
     );
 
     // Update overall Student status back to pending since a new file was uploaded
-    await Student.findByIdAndUpdate(id, { verificationStatus: 'Pending' });
+    await req.models.Student.findByIdAndUpdate(id, { verificationStatus: 'Pending' });
 
     // Log upload action
-    await AuditLog.create({
+    await req.models.AuditLog.create({
       action: 'UPLOAD_DOCUMENT',
       performedBy: req.user._id,
       studentId: student._id,
@@ -716,8 +716,8 @@ exports.uploadDocument = async (req, res) => {
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
-    const updatedStudent = await Student.findById(id);
-    const result = await attachDocumentsToStudent(updatedStudent);
+    const updatedStudent = await req.models.Student.findById(id);
+    const result = await attachDocumentsToStudent(updatedStudent, req.models.Document);
 
     res.status(200).json({
       success: true,
@@ -741,12 +741,12 @@ exports.deleteDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid document type specified' });
     }
 
-    const student = await Student.findById(id);
+    const student = await req.models.Student.findById(id);
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    const doc = await Document.findOne({ studentId: id, documentType });
+    const doc = await req.models.Document.findOne({ studentId: id, documentType });
     if (!doc) {
       return res.status(400).json({ success: false, message: 'Document does not exist' });
     }
@@ -757,10 +757,10 @@ exports.deleteDocument = async (req, res) => {
     }
 
     // Remove document record
-    await Document.deleteOne({ studentId: id, documentType });
+    await req.models.Document.deleteOne({ studentId: id, documentType });
 
     // Recalculate Student Status
-    const remainingDocs = await Document.find({ studentId: id });
+    const remainingDocs = await req.models.Document.find({ studentId: id });
     const hasRejected = remainingDocs.some((d) => d.status === 'Rejected');
     const hasPending = remainingDocs.length < VALID_DOCUMENTS.length || remainingDocs.some((d) => d.status === 'Pending');
 
@@ -773,7 +773,7 @@ exports.deleteDocument = async (req, res) => {
     await student.save();
 
     // Log deletion
-    await AuditLog.create({
+    await req.models.AuditLog.create({
       action: 'DELETE_DOCUMENT',
       performedBy: req.user._id,
       studentId: student._id,
@@ -782,7 +782,7 @@ exports.deleteDocument = async (req, res) => {
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
-    const result = await attachDocumentsToStudent(student);
+    const result = await attachDocumentsToStudent(student, req.models.Document);
 
     res.status(200).json({
       success: true,
@@ -807,7 +807,7 @@ exports.verifyDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid verification status' });
     }
 
-    const doc = await Document.findOne({ studentId: id, documentType });
+    const doc = await req.models.Document.findOne({ studentId: id, documentType });
     if (!doc) {
       return res.status(404).json({ success: false, message: 'Document not found or not uploaded yet.' });
     }
@@ -818,7 +818,7 @@ exports.verifyDocument = async (req, res) => {
     await doc.save();
 
     // Recalculate Student Status
-    const allDocs = await Document.find({ studentId: id });
+    const allDocs = await req.models.Document.find({ studentId: id });
     const hasRejected = allDocs.some((d) => d.status === 'Rejected');
     const verifiedCount = allDocs.filter((d) => d.status === 'Verified').length;
     const isAllVerified = verifiedCount === VALID_DOCUMENTS.length; // all 11 verified
@@ -830,10 +830,10 @@ exports.verifyDocument = async (req, res) => {
       overallStatus = 'Verified';
     }
 
-    await Student.findByIdAndUpdate(id, { verificationStatus: overallStatus });
+    await req.models.Student.findByIdAndUpdate(id, { verificationStatus: overallStatus });
 
     // Log Verification Action
-    await AuditLog.create({
+    await req.models.AuditLog.create({
       action: 'UPDATE_STUDENT',
       performedBy: req.user._id,
       studentId: id,
@@ -857,7 +857,7 @@ exports.verifyDocument = async (req, res) => {
 // @access  Private
 exports.exportCSV = async (req, res) => {
   try {
-    const students = await Student.find({}).sort({ class: 1, name: 1 });
+    const students = await req.models.Student.find({}).sort({ class: 1, name: 1 });
 
     const csvHeaders = [
       'Name',
@@ -878,7 +878,7 @@ exports.exportCSV = async (req, res) => {
 
     const csvRows = [];
     for (const s of students) {
-      const studentWithDocs = await attachDocumentsToStudent(s);
+      const studentWithDocs = await attachDocumentsToStudent(s, req.models.Document);
       let uploadCount = 0;
       VALID_DOCUMENTS.forEach((doc) => {
         if (studentWithDocs.documents[doc]?.url) uploadCount++;
@@ -922,11 +922,11 @@ exports.exportCSV = async (req, res) => {
 // @access  Private
 exports.exportExcel = async (req, res) => {
   try {
-    const students = await Student.find({}).sort({ class: 1, name: 1 });
+    const students = await req.models.Student.find({}).sort({ class: 1, name: 1 });
 
     const data = [];
     for (const s of students) {
-      const studentWithDocs = await attachDocumentsToStudent(s);
+      const studentWithDocs = await attachDocumentsToStudent(s, req.models.Document);
       let uploadCount = 0;
       const docStatuses = {};
 
@@ -982,7 +982,7 @@ exports.exportExcel = async (req, res) => {
 // @access  Private
 exports.exportPDF = async (req, res) => {
   try {
-    const students = await Student.find({}).sort({ class: 1, name: 1 });
+    const students = await req.models.Student.find({}).sort({ class: 1, name: 1 });
 
     const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
 
@@ -1021,7 +1021,7 @@ exports.exportPDF = async (req, res) => {
     doc.font('Helvetica').fontSize(9);
 
     for (const student of students) {
-      const studentWithDocs = await attachDocumentsToStudent(student);
+      const studentWithDocs = await attachDocumentsToStudent(student, req.models.Document);
 
       if (y > 520) {
         doc.addPage({ layout: 'landscape' });
@@ -1289,7 +1289,7 @@ exports.importStudents = async (req, res) => {
         }
 
         // Search database
-        const existingStudent = await Student.findOne({ $or: matchCriteria });
+        const existingStudent = await req.models.Student.findOne({ $or: matchCriteria });
 
         if (existingStudent) {
           // Merge spreadsheet data into existing student
@@ -1318,7 +1318,7 @@ exports.importStudents = async (req, res) => {
           data.updatedBy = req.user._id;
           data.verificationStatus = 'Pending';
 
-          const newStudent = new Student(data);
+          const newStudent = new req.models.Student(data);
           await newStudent.save();
           createdCount++;
         }
@@ -1335,7 +1335,7 @@ exports.importStudents = async (req, res) => {
     }
 
     // Write a summary Audit Log entry
-    await AuditLog.create({
+    await req.models.AuditLog.create({
       action: 'IMPORT_STUDENTS',
       performedBy: req.user._id,
       details: `Spreadsheet Import summary: Registered: ${createdCount}, Updated: ${updatedCount}, Failed: ${failedCount}`,

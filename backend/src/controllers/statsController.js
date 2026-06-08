@@ -21,16 +21,19 @@ const VALID_DOCUMENTS = [
 // @access  Private
 exports.getStats = async (req, res) => {
   try {
+    const StudentModel = req.models.Student;
+    const DocumentModel = req.models.Document;
+
     // 1. Total Students
-    const totalStudents = await Student.countDocuments({});
+    const totalStudents = await StudentModel.countDocuments({});
 
     // 2. Count by verification status
-    const verifiedStudents = await Student.countDocuments({ verificationStatus: 'Verified' });
-    const rejectedStudents = await Student.countDocuments({ verificationStatus: 'Rejected' });
-    const pendingStudents = await Student.countDocuments({ verificationStatus: 'Pending' });
+    const verifiedStudents = await StudentModel.countDocuments({ verificationStatus: 'Verified' });
+    const rejectedStudents = await StudentModel.countDocuments({ verificationStatus: 'Rejected' });
+    const pendingStudents = await StudentModel.countDocuments({ verificationStatus: 'Pending' });
 
     // 3. Class Wise Statistics (Aggregation pipeline)
-    const classStats = await Student.aggregate([
+    const classStats = await StudentModel.aggregate([
       {
         $group: {
           _id: '$class',
@@ -55,7 +58,7 @@ exports.getStats = async (req, res) => {
     ]);
 
     // 4. Document-wise upload statistics breakdown
-    const docStatsAgg = await Document.aggregate([
+    const docStatsAgg = await DocumentModel.aggregate([
       {
         $group: {
           _id: '$documentType',
