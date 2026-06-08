@@ -83,6 +83,16 @@ const getGoogleDriveDownloadUrl = (url) => {
   return url;
 };
 
+// Helper to get a unique, valid file name for zipping (handles undefined / missing fileNames in database)
+const getDocumentFileName = (doc) => {
+  if (doc.fileName && doc.fileName !== 'undefined') {
+    return doc.fileName;
+  }
+  const ext = path.extname(doc.url.split('?')[0]) || '.png';
+  const formattedType = doc.documentType.replace(/([A-Z])/g, '_$1').toLowerCase();
+  return `${formattedType}${ext}`;
+};
+
 // @desc    Get the next serial number (srNumber) based on student count & max SR number
 // @route   GET /api/students/next-sr
 // @access  Private
@@ -135,11 +145,12 @@ exports.downloadAllDocuments = async (req, res) => {
         if (!doc?.url) continue;
 
         try {
+          const fileName = getDocumentFileName(doc);
           if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
             // Local file - read directly from disk to avoid network resolution issues
             const filePath = path.join(__dirname, '../../uploads', doc.publicId);
             if (fs.existsSync(filePath)) {
-              archive.file(filePath, { name: `${folderName}/${doc.fileName}` });
+              archive.file(filePath, { name: `${folderName}/${fileName}` });
             } else {
               console.error(`Local file not found for ${studentWithDocs.name}: ${filePath}`);
             }
@@ -158,7 +169,7 @@ exports.downloadAllDocuments = async (req, res) => {
             });
 
             archive.append(response.data, {
-              name: `${folderName}/${doc.fileName}`,
+              name: `${folderName}/${fileName}`,
             });
           }
         } catch (err) {
@@ -188,7 +199,8 @@ exports.downloadStudentDocuments = async (req, res) => {
     }
 
     const studentWithDocs = await attachDocumentsToStudent(student);
-    res.attachment(`${studentWithDocs.name.replace(/[^\w\s]/gi, '_')}_documents.zip`);
+    const zipFileName = `${studentWithDocs.firstName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase()}-docs.zip`;
+    res.attachment(zipFileName);
 
     const archive = archiver('zip', {
       zlib: { level: 9 },
@@ -201,11 +213,12 @@ exports.downloadStudentDocuments = async (req, res) => {
       if (!doc?.url) continue;
 
       try {
+        const fileName = getDocumentFileName(doc);
         if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
           // Local file - read directly from disk
           const filePath = path.join(__dirname, '../../uploads', doc.publicId);
           if (fs.existsSync(filePath)) {
-            archive.file(filePath, { name: doc.fileName });
+            archive.file(filePath, { name: fileName });
             fileCount++;
           } else {
             console.error(`Local file not found: ${filePath}`);
@@ -225,12 +238,12 @@ exports.downloadStudentDocuments = async (req, res) => {
           });
 
           archive.append(response.data, {
-            name: doc.fileName,
+            name: fileName,
           });
           fileCount++;
         }
       } catch (err) {
-        console.error(`Error zipping document ${doc.fileName}:`, err.message);
+        console.error(`Error zipping document for student ${studentWithDocs.name}:`, err.message);
       }
     }
 
