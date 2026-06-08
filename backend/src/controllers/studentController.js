@@ -49,6 +49,11 @@ exports.downloadAllDocuments = async (req, res) => {
 const deletePhysicalFile = async (publicId) => {
   if (!publicId) return;
 
+  if (typeof publicId === 'string' && publicId.startsWith('google_drive_')) {
+    console.log(`Skipping physical file deletion for Google Drive link: ${publicId}`);
+    return;
+  }
+
   if (isCloudinaryConfigured()) {
     try {
       // Cloudinary deletion
@@ -364,15 +369,17 @@ exports.uploadDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid document type specified' });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    if (!req.file && !req.body.driveUrl) {
+      return res.status(400).json({ success: false, message: 'Please upload a file or provide a Google Drive link' });
     }
 
     const student = await Student.findById(id);
     if (!student) {
       // Clean up uploaded file if student doesn't exist
-      const fileIdToDelete = isCloudinaryConfigured() ? req.file.filename : req.file.filename;
-      await deletePhysicalFile(fileIdToDelete);
+      if (req.file) {
+        const fileIdToDelete = req.file.filename;
+        await deletePhysicalFile(fileIdToDelete);
+      }
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
@@ -381,14 +388,25 @@ exports.uploadDocument = async (req, res) => {
       await deletePhysicalFile(student.documents[documentType].publicId);
     }
 
-    // Build file URL
-    let fileUrl = req.file.path;
-    let filePublicId = req.file.filename;
+    // Build file URL and metadata
+    let fileUrl;
+    let filePublicId;
+    let fileName;
 
-    if (!isCloudinaryConfigured()) {
-      // local setup: generate server URL
-      fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    if (req.body.driveUrl) {
+      fileUrl = req.body.driveUrl;
+      filePublicId = 'google_drive_' + Date.now();
+      fileName = req.body.fileName || `${documentType}_drive_link.url`;
+    } else {
+      fileUrl = req.file.path;
       filePublicId = req.file.filename;
+
+      if (!isCloudinaryConfigured()) {
+        // local setup: generate server URL
+        fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        filePublicId = req.file.filename;
+      }
+      fileName = req.file.originalname;
     }
 
     // Update student document details
@@ -396,7 +414,7 @@ exports.uploadDocument = async (req, res) => {
     student.documents[documentType] = {
       url: fileUrl,
       publicId: filePublicId,
-      fileName: req.file.originalname,
+      fileName: fileName,
       uploadedBy: req.user._id,
       uploadedAt: new Date(),
     };
@@ -410,13 +428,15 @@ exports.uploadDocument = async (req, res) => {
       performedBy: req.user._id,
       studentId: student._id,
       studentName: student.name,
-      details: `Uploaded ${documentType} for student ${student.name} (${req.file.originalname})`,
+      details: req.body.driveUrl
+        ? `Linked Google Drive document (${fileName}) for student ${student.name}`
+        : `Uploaded ${documentType} for student ${student.name} (${fileName})`,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
     res.status(200).json({
       success: true,
-      message: 'Document uploaded successfully',
+      message: 'Document saved successfully',
       data: student,
     });
   } catch (error) {
