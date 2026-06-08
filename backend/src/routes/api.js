@@ -29,6 +29,7 @@ router.get('/students/export/pdf', protect, studentController.exportPDF);
 // STUDENT CRUD ROUTES
 // ==========================================
 router.get('/students/check-duplicate', protect, studentController.checkDuplicate);
+router.get('/students/next-sr', protect, studentController.getNextSrNumber);
 
 router.route('/students')
   .get(protect, studentController.getStudents)

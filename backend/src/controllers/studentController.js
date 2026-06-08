@@ -9,6 +9,16 @@ const PDFDocument = require('pdfkit');
 const archiver = require('archiver');
 const axios = require('axios');
 
+// Helper to convert Google Drive share link to a direct download link
+const getGoogleDriveDownloadUrl = (url) => {
+  if (!url) return null;
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://docs.google.com/uc?export=download&id=${match[1]}&confirm=t`;
+  }
+  return url;
+};
+
 // Define valid document fields (11 required documents)
 const VALID_DOCUMENTS = [
   'birthCertificate',
@@ -95,15 +105,32 @@ exports.downloadAllDocuments = async (req, res) => {
         if (!doc?.url) continue;
 
         try {
-          const response = await axios({
-            method: 'get',
-            url: doc.url,
-            responseType: 'stream',
-          });
+          if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
+            // Local file - read directly from disk
+            const filePath = path.join(__dirname, '../../uploads', doc.publicId);
+            if (fs.existsSync(filePath)) {
+              archive.file(filePath, { name: `${folderName}/${doc.fileName}` });
+            } else {
+              console.error(`Local file not found for ${studentWithDocs.name}: ${filePath}`);
+            }
+          } else {
+            // Remote file (Cloudinary or Google Drive)
+            let downloadUrl = doc.url;
+            if (doc.publicId && doc.publicId.startsWith('drive-')) {
+              downloadUrl = getGoogleDriveDownloadUrl(doc.url);
+            }
 
-          archive.append(response.data, {
-            name: `${folderName}/${doc.fileName}`,
-          });
+            const response = await axios({
+              method: 'get',
+              url: downloadUrl,
+              responseType: 'stream',
+              timeout: 10000,
+            });
+
+            archive.append(response.data, {
+              name: `${folderName}/${doc.fileName}`,
+            });
+          }
         } catch (err) {
           console.error(`Error archiving doc for ${studentWithDocs.name}:`, err.message);
         }
@@ -142,18 +169,36 @@ exports.downloadStudentDocuments = async (req, res) => {
     let fileCount = 0;
     for (const [key, doc] of Object.entries(studentWithDocs.documents || {})) {
       if (!doc?.url) continue;
-      fileCount++;
 
       try {
-        const response = await axios({
-          method: 'get',
-          url: doc.url,
-          responseType: 'stream',
-        });
+        if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
+          // Local file - read directly from disk
+          const filePath = path.join(__dirname, '../../uploads', doc.publicId);
+          if (fs.existsSync(filePath)) {
+            archive.file(filePath, { name: doc.fileName });
+            fileCount++;
+          } else {
+            console.error(`Local file not found: ${filePath}`);
+          }
+        } else {
+          // Remote file (Cloudinary or Google Drive)
+          let downloadUrl = doc.url;
+          if (doc.publicId && doc.publicId.startsWith('drive-')) {
+            downloadUrl = getGoogleDriveDownloadUrl(doc.url);
+          }
 
-        archive.append(response.data, {
-          name: doc.fileName,
-        });
+          const response = await axios({
+            method: 'get',
+            url: downloadUrl,
+            responseType: 'stream',
+            timeout: 10000,
+          });
+
+          archive.append(response.data, {
+            name: doc.fileName,
+          });
+          fileCount++;
+        }
       } catch (err) {
         console.error(`Error zipping document ${doc.fileName}:`, err.message);
       }
@@ -199,6 +244,37 @@ exports.checkDuplicate = async (req, res) => {
   } catch (error) {
     console.error('Error checking duplicate:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Get the next serial number (srNumber) based on student count and existing max numeric sr
+// @route   GET /api/students/next-sr
+// @access  Private
+exports.getNextSrNumber = async (req, res) => {
+  try {
+    const students = await Student.find({}, { srNumber: 1 });
+    let maxSr = 0;
+    students.forEach((s) => {
+      if (s.srNumber) {
+        const match = s.srNumber.match(/\d+/);
+        if (match) {
+          const val = parseInt(match[0], 10);
+          if (val > maxSr) {
+            maxSr = val;
+          }
+        }
+      }
+    });
+    const count = students.length;
+    const nextSr = Math.max(count + 1, maxSr + 1);
+
+    res.status(200).json({
+      success: true,
+      nextSrNumber: String(nextSr),
+    });
+  } catch (error) {
+    console.error('Error getting next SR number:', error);
+    res.status(500).json({ success: false, message: 'Server error getting next SR number' });
   }
 };
 

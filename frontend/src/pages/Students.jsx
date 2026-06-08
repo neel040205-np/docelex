@@ -412,8 +412,21 @@ export const Students = () => {
     return Object.values(student.documents).filter((doc) => doc && doc.url).length;
   };
 
-  // Class & Divisions
-  const classesList = ['Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'];
+  const classesList = [
+    'Balvatika',
+    'Class 1',
+    'Class 2',
+    'Class 3',
+    'Class 4',
+    'Class 5',
+    'Class 6',
+    'Class 7',
+    'Class 8',
+    'Class 9',
+    'Class 10',
+    'Class 11',
+    'Class 12',
+  ];
   const divisionList = ['A', 'B', 'C', 'D'];
 
   const documentTypes = [

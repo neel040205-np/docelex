@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
@@ -34,6 +34,21 @@ export const StudentRegister = () => {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+
+  // Fetch next SR number on mount
+  useEffect(() => {
+    const fetchNextSr = async () => {
+      try {
+        const res = await client.get('/students/next-sr');
+        if (res.success && res.nextSrNumber) {
+          form.setFieldsValue({ srNumber: res.nextSrNumber });
+        }
+      } catch (err) {
+        console.error('Error fetching next SR number:', err);
+      }
+    };
+    fetchNextSr();
+  }, [form]);
 
   // 1. Create Student Mutation
   const createMutation = useMutation({
@@ -91,7 +106,21 @@ export const StudentRegister = () => {
     }
   };
 
-  const classesList = ['Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'];
+  const classesList = [
+    'Balvatika',
+    'Class 1',
+    'Class 2',
+    'Class 3',
+    'Class 4',
+    'Class 5',
+    'Class 6',
+    'Class 7',
+    'Class 8',
+    'Class 9',
+    'Class 10',
+    'Class 11',
+    'Class 12',
+  ];
   const divisionList = ['A', 'B', 'C', 'D'];
   const categoriesList = ['General', 'OBC', 'SC', 'ST', 'EWS'];
 
