@@ -210,16 +210,34 @@ const seedData = async () => {
     await Student.deleteMany({});
     await AuditLog.deleteMany({});
 
-    console.log('Seeding teacher account...');
+    console.log('Seeding teacher accounts...');
     const teacherUser = await User.create({
       name: 'Teacher',
       email: 'teacher@docelex.com',
-      password: 'Teacher@1234',
+      password: 'Elex@1234',
       role: 'teacher',
     });
 
-    console.log(`Seeded User:`);
-    console.log(`- Teacher: teacher@docelex.com / Teacher@1234`);
+    const additionalTeachers = [
+      { name: 'Hitendra', email: 'teacher@dochitendra.com', password: 'Hitendra@1234', role: 'teacher' },
+      { name: 'Anila', email: 'teacher@docanila.com', password: 'Anila@1234', role: 'teacher' },
+      { name: 'Neel', email: 'teacher@docneel.com', password: 'Neel@1234', role: 'teacher' },
+      { name: 'Rajesh', email: 'teacher@docrajesh.com', password: 'Rajesh@1234', role: 'teacher' },
+      { name: 'Sunita', email: 'teacher@docsunita.com', password: 'Sunita@1234', role: 'teacher' },
+      { name: 'Amit', email: 'teacher@docamit.com', password: 'Amit@1234', role: 'teacher' },
+      { name: 'Meena', email: 'teacher@docmeena.com', password: 'Meena@1234', role: 'teacher' },
+      { name: 'Sanjay', email: 'teacher@docsanjay.com', password: 'Sanjay@1234', role: 'teacher' },
+      { name: 'Ritu', email: 'teacher@docritu.com', password: 'Ritu@1234', role: 'teacher' },
+      { name: 'Raman', email: 'teacher@docraman.com', password: 'Raman@1234', role: 'teacher' }
+    ];
+
+    await User.create(additionalTeachers);
+
+    console.log(`Seeded Users:`);
+    console.log(`- Default: teacher@docelex.com / Elex@1234`);
+    console.log(`- Hitendra: teacher@dochitendra.com / Hitendra@1234`);
+    console.log(`- Anila: teacher@docanila.com / Anila@1234`);
+    console.log(`- Neel: teacher@docneel.com / Neel@1234`);
 
     // Create Students
     console.log('Seeding mock students...');
