@@ -1067,6 +1067,8 @@ exports.exportPDF = async (req, res) => {
 // @access  Private
 exports.importStudents = async (req, res) => {
   try {
+    const { defaultClass, defaultDivision, defaultMobile } = req.body;
+
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Please upload an Excel or CSV file' });
     }
@@ -1107,22 +1109,32 @@ exports.importStudents = async (req, res) => {
       mothername: 'motherName',
       mothersname: 'motherName',
       gender: 'gender',
+      mf: 'gender',
+      sex: 'gender',
       dob: 'dob',
       dateofbirth: 'dob',
       admissiondate: 'admissionDate',
       caste: 'caste',
       castecategory: 'casteCategory',
+      castetype: 'casteCategory',
       pennumber: 'penNumber',
+      pen: 'penNumber',
       apaarid: 'apaarId',
       udisenumber: 'udiseNumber',
+      adhardisenumber: 'udiseNumber',
       nameasperchildtracking: 'nameAsPerChildTracking',
       nameasperudiseplus: 'nameAsPerUdisePlus',
       aadhaarnumber: 'aadhaarNumber',
+      adharcardnumber: 'aadhaarNumber',
       nameasperaadhaar: 'nameAsPerAadhaar',
+      nameasperadharcard: 'nameAsPerAadhaar',
       dobasperaadhaar: 'dobAsPerAadhaar',
+      asperadharcarddob: 'dobAsPerAadhaar',
       bankaccountnumber: 'bankAccountNumber',
       ifsccode: 'ifscCode',
+      ifsc: 'ifscCode',
       accountholdername: 'accountHolderName',
+      nameasperbakacc: 'accountHolderName',
       motheraadhaarnumber: 'motherAadhaarNumber',
       fatheraadhaarnumber: 'fatherAadhaarNumber',
       mobilenumber1: 'mobileNumber1',
@@ -1143,7 +1155,13 @@ exports.importStudents = async (req, res) => {
         return date;
       }
       const d = new Date(val);
-      if (!isNaN(d.getTime())) return d;
+      if (!isNaN(d.getTime())) {
+        let year = d.getFullYear();
+        if (year < 100) {
+          d.setFullYear(year + (year > 50 ? 1900 : 2000));
+        }
+        return d;
+      }
       
       const parts = String(val).split(/[-/]/);
       if (parts.length === 3) {
@@ -1151,7 +1169,11 @@ exports.importStudents = async (req, res) => {
           const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
           if (!isNaN(date.getTime())) return date;
         } else {
-          const date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          let year = parseInt(parts[2]);
+          if (year < 100) {
+            year += (year > 50 ? 1900 : 2000);
+          }
+          const date = new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
           if (!isNaN(date.getTime())) return date;
         }
       }
@@ -1184,6 +1206,17 @@ exports.importStudents = async (req, res) => {
       }
 
       try {
+        // Apply fallback defaults if fields are missing/empty in the row
+        if ((data.class === undefined || data.class === null || String(data.class).trim() === '') && defaultClass) {
+          data.class = defaultClass;
+        }
+        if ((data.division === undefined || data.division === null || String(data.division).trim() === '') && defaultDivision) {
+          data.division = defaultDivision;
+        }
+        if ((data.mobileNumber1 === undefined || data.mobileNumber1 === null || String(data.mobileNumber1).trim() === '') && defaultMobile) {
+          data.mobileNumber1 = defaultMobile;
+        }
+
         // String conversion and float cleaning for numeric fields
         const stringFields = [
           'srNumber', 'grNumber', 'aadhaarNumber', 'bankAccountNumber', 

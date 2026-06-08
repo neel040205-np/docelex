@@ -68,6 +68,9 @@ export const StudentList = () => {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [fileList, setFileList] = useState([]);
+  const [defaultClass, setDefaultClass] = useState('');
+  const [defaultDivision, setDefaultDivision] = useState('');
+  const [defaultMobile, setDefaultMobile] = useState('');
 
   const handleImportSubmit = async () => {
     if (fileList.length === 0) {
@@ -77,6 +80,9 @@ export const StudentList = () => {
     const file = fileList[0];
     const formData = new FormData();
     formData.append('file', file);
+    if (defaultClass) formData.append('defaultClass', defaultClass);
+    if (defaultDivision) formData.append('defaultDivision', defaultDivision);
+    if (defaultMobile) formData.append('defaultMobile', defaultMobile);
 
     setImporting(true);
     setImportResult(null);
@@ -109,6 +115,9 @@ export const StudentList = () => {
     setFileList([]);
     setImportResult(null);
     setImporting(false);
+    setDefaultClass('');
+    setDefaultDivision('');
+    setDefaultMobile('');
   };
 
   const uploadProps = {
@@ -698,6 +707,49 @@ export const StudentList = () => {
           <Paragraph>
             Upload a spreadsheet (<strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong>) to automatically register new students or bulk-update existing details using matching <strong>SR</strong> or <strong>GR</strong>.
           </Paragraph>
+
+          {/* Fallback settings for missing columns */}
+          <div style={{ marginBottom: '16px', padding: '16px', background: isDarkMode ? '#1f1f1f' : '#fafafa', borderRadius: '8px', border: '1px solid var(--border-color, #d9d9d9)' }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '13px' }}>Fallback Import Fields (Defaults)</Title>
+            <Paragraph style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+              If your spreadsheet is missing columns for <strong>Class</strong>, <strong>Division</strong>, or <strong>Mobile Number</strong>, select fallbacks here. They will be applied to newly registered students.
+            </Paragraph>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1.5fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-secondary)' }}>Class</label>
+                <Select
+                  placeholder="Select Class"
+                  value={defaultClass || undefined}
+                  onChange={(val) => setDefaultClass(val || '')}
+                  style={{ width: '100%' }}
+                  allowClear
+                >
+                  {classesList.map(c => <Option key={c} value={c}>{c}</Option>)}
+                </Select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-secondary)' }}>Division</label>
+                <Select
+                  placeholder="Select Div"
+                  value={defaultDivision || undefined}
+                  onChange={(val) => setDefaultDivision(val || '')}
+                  style={{ width: '100%' }}
+                  allowClear
+                >
+                  {divisionList.map(d => <Option key={d} value={d}>{d}</Option>)}
+                </Select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-secondary)' }}>Mobile Number 1</label>
+                <Input
+                  placeholder="E.g. 9876543210"
+                  value={defaultMobile}
+                  onChange={(e) => setDefaultMobile(e.target.value)}
+                  maxLength={10}
+                />
+              </div>
+            </div>
+          </div>
 
           <Upload.Dragger {...uploadProps} style={{ padding: '20px', background: 'var(--bg-card)', border: '2px dashed var(--border-color)' }}>
             <p className="ant-upload-drag-icon">
