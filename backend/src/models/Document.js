@@ -29,11 +29,9 @@ const DocumentSchema = new mongoose.Schema(
     },
     fileUrl: {
       type: String,
-      required: true,
     },
     publicId: {
       type: String,
-      required: true,
     },
     uploadDate: {
       type: Date,

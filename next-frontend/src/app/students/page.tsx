@@ -87,11 +87,18 @@ export default function SearchPage() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-gray-50">Student Directory</h1>
           <p className="text-gray-500">Search, filter, and manage student registration records.</p>
         </div>
-        <Link href="/students/register">
-          <Button className="flex items-center gap-2 bg-indigo-600 text-white">
-            <Plus size={16} /> Register Student
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/students/import">
+            <Button variant="outline" className="flex items-center gap-2">
+              Bulk Import
+            </Button>
+          </Link>
+          <Link href="/students/register">
+            <Button className="flex items-center gap-2 bg-indigo-600 text-white">
+              <Plus size={16} /> Register Student
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filter Card */}
