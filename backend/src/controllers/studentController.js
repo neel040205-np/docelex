@@ -45,6 +45,59 @@ exports.downloadAllDocuments = async (req, res) => {
   await archive.finalize();
 };
 
+exports.downloadStudentDocuments = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    res.attachment(`${student.name.replace(/[^\w\s]/gi, '_')}_documents.zip`);
+
+    const archive = archiver('zip', {
+      zlib: { level: 9 },
+    });
+
+    archive.pipe(res);
+
+    let fileCount = 0;
+    for (const [key, doc] of Object.entries(student.documents || {})) {
+      if (!doc?.url) continue;
+      fileCount++;
+
+      try {
+        const response = await axios({
+          method: 'get',
+          url: doc.url,
+          responseType: 'stream',
+        });
+
+        archive.append(response.data, {
+          name: doc.fileName,
+        });
+      } catch (err) {
+        console.error(`Error zipping document ${doc.fileName} for student ${student.name}:`, err.message);
+      }
+    }
+
+    if (fileCount === 0) {
+      const { Readable } = require('stream');
+      const s = new Readable();
+      s.push('No documents uploaded for this student yet.');
+      s.push(null);
+      archive.append(s, { name: 'readme.txt' });
+    }
+
+    await archive.finalize();
+  } catch (error) {
+    console.error('Error zipping student documents:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Server error downloading documents' });
+    }
+  }
+};
+
 // Helper to delete physical file
 const deletePhysicalFile = async (publicId) => {
   if (!publicId) return;

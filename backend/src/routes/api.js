@@ -37,6 +37,8 @@ router.route('/students/:id')
   .put(protect, studentController.updateStudent)
   .delete(protect, studentController.deleteStudent);
 
+router.get('/students/:id/download-documents', protect, studentController.downloadStudentDocuments);
+
 // ==========================================
 // DOCUMENT ROUTES
 // ==========================================

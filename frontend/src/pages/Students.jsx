@@ -1002,7 +1002,24 @@ export const Students = () => {
       {/* 2. Detailed Profile & Document Management Pane Modal */}
       {/* ---------------------------------------------------- */}
       <Modal
-        title={t('students.portfolioTitle')}
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingRight: '24px' }}>
+            <span>{t('students.portfolioTitle')}</span>
+            {studentDetailData?.data && (
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                size="small"
+                onClick={() => {
+                  window.open(`/api/students/${viewingStudentId}/download-documents?token=${localStorage.getItem('token')}`, '_blank');
+                }}
+                style={{ borderRadius: '6px' }}
+              >
+                {t('students.downloadAll', 'Download All')}
+              </Button>
+            )}
+          </div>
+        }
         open={detailOpen}
         onCancel={() => {
           setDetailOpen(false);
