@@ -199,7 +199,18 @@ exports.downloadStudentDocuments = async (req, res) => {
     }
 
     const studentWithDocs = await attachDocumentsToStudent(student);
-    const zipFileName = `${studentWithDocs.firstName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase()}-docs.zip`;
+    
+    // Fallback to name if firstName is not present (e.g. for legacy records)
+    let rawName = 'student';
+    if (studentWithDocs.firstName) {
+      rawName = studentWithDocs.firstName;
+    } else if (studentWithDocs.name) {
+      // For legacy records, take the first word of the full name
+      rawName = studentWithDocs.name.trim().split(/\s+/)[0];
+    }
+    
+    const safeName = rawName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase() || 'student';
+    const zipFileName = `${safeName}-docs.zip`;
     res.attachment(zipFileName);
 
     const archive = archiver('zip', {
