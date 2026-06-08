@@ -225,11 +225,13 @@ exports.downloadStudentDocuments = async (req, res) => {
 
       try {
         const fileName = getDocumentFileName(doc);
+        const archivePath = `${safeName}-docs/${fileName}`;
+        
         if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
           // Local file - read directly from disk
           const filePath = path.join(__dirname, '../../uploads', doc.publicId);
           if (fs.existsSync(filePath)) {
-            archive.file(filePath, { name: fileName });
+            archive.file(filePath, { name: archivePath });
             fileCount++;
           } else {
             console.error(`Local file not found: ${filePath}`);
@@ -249,7 +251,7 @@ exports.downloadStudentDocuments = async (req, res) => {
           });
 
           archive.append(response.data, {
-            name: fileName,
+            name: archivePath,
           });
           fileCount++;
         }
@@ -263,7 +265,7 @@ exports.downloadStudentDocuments = async (req, res) => {
       const s = new Readable();
       s.push('No documents uploaded for this student yet.');
       s.push(null);
-      archive.append(s, { name: 'readme.txt' });
+      archive.append(s, { name: `${safeName}-docs/readme.txt` });
     }
 
     await archive.finalize();
