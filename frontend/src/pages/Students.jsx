@@ -407,6 +407,55 @@ export const Students = () => {
     }
   };
 
+  const handleDownloadZip = async () => {
+    const student = studentDetailData?.data;
+    if (!student) return;
+    const hide = message.loading('Preparing zip download...', 0);
+    try {
+      const blob = await client.get(`/students/${student._id}/download-documents`, {
+        responseType: 'blob',
+      });
+
+      // Try to parse the blob as text to check if it's JSON error
+      const text = await blob.text();
+      try {
+        const json = JSON.parse(text);
+        if (json && json.success === false) {
+          message.error(json.message || 'Failed to download documents');
+          hide();
+          return;
+        }
+      } catch (e) {
+        // Not a JSON string, proceed with binary download
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const rawName = student.firstName || student.name?.trim().split(/\s+/)[0] || 'student';
+      const safeName = rawName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase();
+      a.download = `${safeName}-docs.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          message.error(json.message || 'Failed to download zip');
+          hide();
+          return;
+        } catch (e) {}
+      }
+      message.error(err.message || 'Failed to download zip');
+    } finally {
+      hide();
+    }
+  };
+
   const getUploadedCount = (student) => {
     if (!student?.documents) return 0;
     return Object.values(student.documents).filter((doc) => doc && doc.url).length;
@@ -1010,9 +1059,7 @@ export const Students = () => {
                 type="primary"
                 icon={<DownloadOutlined />}
                 size="small"
-                onClick={() => {
-                  window.open(`${client.defaults.baseURL}/students/${viewingStudentId}/download-documents?token=${localStorage.getItem('token')}`, '_blank');
-                }}
+                onClick={handleDownloadZip}
                 style={{ borderRadius: '6px' }}
               >
                 {t('students.downloadAll', 'Download All')}
