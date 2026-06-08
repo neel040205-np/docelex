@@ -166,7 +166,7 @@
     "pendingUploads": "Pending Uploads",
     "removeFileTitle": "Remove this file?",
     "uploadFile": "Upload File",
-    "uploadHint": "PDF or Images (Max 5MB)"
+    "uploadHint": "Google Drive Link"
   },
   "documents": {
     "birthCertificate": "Birth Certificate",

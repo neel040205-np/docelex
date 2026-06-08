@@ -993,44 +993,16 @@ export const Students = () => {
                               </div>
                             ) : (
                               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', flex: 1, height: '100%' }}>
-                                <Dropdown
-                                  menu={{
-                                    items: [
-                                      {
-                                        key: 'computer',
-                                        icon: <UploadOutlined />,
-                                        label: (
-                                          <Upload
-                                            beforeUpload={(file) => handleDocumentUpload(file, doc.key)}
-                                            showUploadList={false}
-                                            maxCount={1}
-                                            accept=".pdf,image/*"
-                                            style={{ width: '100%', display: 'block' }}
-                                          >
-                                            <div style={{ width: '100%' }}>{t('students.uploadFromComputer', 'Upload from Computer')}</div>
-                                          </Upload>
-                                        ),
-                                      },
-                                      {
-                                        key: 'drive',
-                                        icon: <GoogleOutlined />,
-                                        label: t('students.uploadFromDrive', 'Upload from Google Drive'),
-                                        onClick: () => handleOpenDriveModal(doc.key),
-                                      },
-                                    ],
-                                  }}
-                                  trigger={['click']}
+                                <Button
+                                  type="dashed"
+                                  size="small"
+                                  icon={<GoogleOutlined style={{ color: '#4285F4' }} />}
+                                  loading={uploadingDoc[doc.key]}
+                                  style={{ fontSize: 12 }}
+                                  onClick={() => handleOpenDriveModal(doc.key)}
                                 >
-                                  <Button
-                                    type="dashed"
-                                    size="small"
-                                    icon={<UploadOutlined />}
-                                    loading={uploadingDoc[doc.key]}
-                                    style={{ fontSize: 12 }}
-                                  >
-                                    {t('students.uploadFile', 'Upload File')}
-                                  </Button>
-                                </Dropdown>
+                                  {t('students.uploadFile', 'Upload File')}
+                                </Button>
                                 <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
                                   {t('students.uploadHint')}
                                 </span>
