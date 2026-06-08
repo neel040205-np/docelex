@@ -11,6 +11,7 @@ const AuditLogSchema = new mongoose.Schema({
       'UPLOAD_DOCUMENT',
       'DELETE_DOCUMENT',
       'USER_LOGIN',
+      'IMPORT_STUDENTS',
     ],
   },
   performedBy: {
