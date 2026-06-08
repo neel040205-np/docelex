@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const axios = require('axios');
 
 // Define valid document fields (11 required documents)
@@ -131,7 +131,7 @@ exports.downloadAllDocuments = async (req, res) => {
     const students = await Student.find();
     res.attachment('students_documents.zip');
 
-    const archive = archiver('zip', {
+    const archive = new ZipArchive({
       zlib: { level: 9 },
     });
 
@@ -213,7 +213,7 @@ exports.downloadStudentDocuments = async (req, res) => {
     const zipFileName = `${safeName}-docs.zip`;
     res.attachment(zipFileName);
 
-    const archive = archiver('zip', {
+    const archive = new ZipArchive({
       zlib: { level: 9 },
     });
 
