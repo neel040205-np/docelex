@@ -170,14 +170,16 @@
   },
   "documents": {
     "birthCertificate": "જન્મ પ્રમાણપત્ર",
-    "studentAadhaar": "વિદ્યાર્થી આધાર",
-    "fatherAadhaar": "પિતાનો આધાર",
-    "motherAadhaar": "માતાનો આધાર",
-    "rationCard": "રેશન કાર્ડ",
-    "addressProof": "સરનામાનો પુરાવો",
     "incomeCertificate": "આવક પ્રમાણપત્ર",
-    "casteCertificate": "જાતિ પ્રમાણપત્ર",
-    "passportPhoto": "પાસપોર્ટ ફોટો"
+    "rationCard": "રેશન કાર્ડ",
+    "studentCasteCertificate": "વિદ્યાર્થી જાતિ પ્રમાણપત્ર",
+    "fatherCasteCertificate": "પિતાનું જાતિ પ્રમાણપત્ર",
+    "studentBankPassbook": "વિદ્યાર્થી બેંક પાસબુક",
+    "fatherBankPassbook": "પિતાની બેંક પાસબુક",
+    "motherBankPassbook": "માતાની બેંક પાસબુક",
+    "motherAadhaar": "માતાનો આધાર",
+    "fatherAadhaar": "પિતાનો આધાર",
+    "studentAadhaar": "વિદ્યાર્થી આધાર"
   },
   "audit": {
     "title": "સિસ્ટમ ઓડિટ લોગ્સ",

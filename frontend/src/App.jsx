@@ -7,7 +7,11 @@ import { AuthGuard } from './components/AuthGuard';
 import { AppLayout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-import { Students } from './pages/Students';
+import { StudentList } from './pages/StudentList';
+import { StudentRegister } from './pages/StudentRegister';
+import { StudentDetails } from './pages/StudentDetails';
+import { StudentEdit } from './pages/StudentEdit';
+import { VerificationDashboard } from './pages/VerificationDashboard';
 import { AuditLogs } from './pages/AuditLogs';
 import { getThemeConfig } from './theme/themeConfig';
 
@@ -61,7 +65,11 @@ function App() {
                 }
               >
                 <Route index element={<Dashboard />} />
-                <Route path="students" element={<Students />} />
+                <Route path="students" element={<StudentList />} />
+                <Route path="students/new" element={<StudentRegister />} />
+                <Route path="students/:id" element={<StudentDetails />} />
+                <Route path="students/:id/edit" element={<StudentEdit />} />
+                <Route path="students/:id/verify" element={<VerificationDashboard />} />
                 
                 <Route path="audit-logs" element={<AuditLogs />} />
               </Route>

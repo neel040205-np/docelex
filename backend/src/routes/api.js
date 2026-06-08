@@ -28,6 +28,8 @@ router.get('/students/export/pdf', protect, studentController.exportPDF);
 // ==========================================
 // STUDENT CRUD ROUTES
 // ==========================================
+router.get('/students/check-duplicate', protect, studentController.checkDuplicate);
+
 router.route('/students')
   .get(protect, studentController.getStudents)
   .post(protect, studentController.createStudent);
@@ -45,6 +47,8 @@ router.get('/students/:id/download-documents', protect, studentController.downlo
 router.route('/students/:id/document/:documentType')
   .post(protect, upload.single('file'), studentController.uploadDocument)
   .delete(protect, studentController.deleteDocument);
+
+router.put('/students/:id/document/:documentType/verify', protect, studentController.verifyDocument);
 
 // ==========================================
 // ANALYTICS & STATS ROUTES

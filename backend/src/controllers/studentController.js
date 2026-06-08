@@ -1,50 +1,127 @@
 const Student = require('../models/Student');
 const AuditLog = require('../models/AuditLog');
+const Document = require('../models/Document');
 const { isCloudinaryConfigured, cloudinary } = require('../config/cloudinary');
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
-
 const archiver = require('archiver');
 const axios = require('axios');
 
-exports.downloadAllDocuments = async (req, res) => {
-  const students = await Student.find();
+// Define valid document fields (11 required documents)
+const VALID_DOCUMENTS = [
+  'birthCertificate',
+  'incomeCertificate',
+  'rationCard',
+  'studentCasteCertificate',
+  'fatherCasteCertificate',
+  'studentBankPassbook',
+  'fatherBankPassbook',
+  'motherBankPassbook',
+  'motherAadhaar',
+  'fatherAadhaar',
+  'studentAadhaar',
+];
 
-  res.attachment('students_documents.zip');
-
-  const archive = archiver('zip', {
-    zlib: { level: 9 },
+// Helper to attach documents object to a student object
+const attachDocumentsToStudent = async (student) => {
+  if (!student) return null;
+  const docs = await Document.find({ studentId: student._id }).populate('verifiedBy', 'name');
+  const documentsObj = {};
+  
+  docs.forEach((doc) => {
+    documentsObj[doc.documentType] = {
+      _id: doc._id,
+      url: doc.fileUrl,
+      publicId: doc.publicId,
+      fileName: doc.fileName,
+      status: doc.status,
+      remarks: doc.remarks || '',
+      uploadDate: doc.uploadDate,
+      verifiedBy: doc.verifiedBy,
+    };
   });
-
-  archive.pipe(res);
-
-  for (const student of students) {
-    const folderName = student.name.replace(/[^\w\s]/gi, '');
-
-    for (const [key, doc] of Object.entries(student.documents || {})) {
-      if (!doc?.url) continue;
-
-      try {
-        const response = await axios({
-          method: 'get',
-          url: doc.url,
-          responseType: 'stream',
-        });
-
-        archive.append(response.data, {
-          name: `${folderName}/${doc.fileName}`,
-        });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  }
-
-  await archive.finalize();
+  
+  const studentObj = student.toObject ? student.toObject() : student;
+  studentObj.documents = documentsObj;
+  return studentObj;
 };
 
+// Helper to delete physical file
+const deletePhysicalFile = async (publicId) => {
+  if (!publicId) return;
+  if (publicId.startsWith('drive-')) return;
+
+  if (isCloudinaryConfigured()) {
+    try {
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`Cloudinary file deleted: ${publicId}`);
+    } catch (err) {
+      console.error(`Error deleting Cloudinary file ${publicId}:`, err);
+    }
+  } else {
+    const filePath = path.join(__dirname, '../../uploads', publicId);
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Local file deleted: ${filePath}`);
+      }
+    } catch (err) {
+      console.error(`Error deleting local file ${filePath}:`, err);
+    }
+  }
+};
+
+// @desc    Download all documents for all students in a ZIP
+// @route   GET /api/students/download/all
+// @access  Private
+exports.downloadAllDocuments = async (req, res) => {
+  try {
+    const students = await Student.find();
+    res.attachment('students_documents.zip');
+
+    const archive = archiver('zip', {
+      zlib: { level: 9 },
+    });
+
+    archive.pipe(res);
+
+    for (const student of students) {
+      const studentWithDocs = await attachDocumentsToStudent(student);
+      const folderName = studentWithDocs.name.replace(/[^\w\s]/gi, '');
+
+      for (const [key, doc] of Object.entries(studentWithDocs.documents || {})) {
+        if (!doc?.url) continue;
+
+        try {
+          const response = await axios({
+            method: 'get',
+            url: doc.url,
+            responseType: 'stream',
+          });
+
+          archive.append(response.data, {
+            name: `${folderName}/${doc.fileName}`,
+          });
+        } catch (err) {
+          console.error(`Error archiving doc for ${studentWithDocs.name}:`, err.message);
+        }
+      }
+    }
+
+    await archive.finalize();
+  } catch (error) {
+    console.error('Error zipping all documents:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Server error downloading documents' });
+    }
+  }
+};
+
+// @desc    Download all documents for a single student in a ZIP
+// @route   GET /api/students/:id/download-documents
+// @access  Private
 exports.downloadStudentDocuments = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
@@ -53,7 +130,8 @@ exports.downloadStudentDocuments = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    res.attachment(`${student.name.replace(/[^\w\s]/gi, '_')}_documents.zip`);
+    const studentWithDocs = await attachDocumentsToStudent(student);
+    res.attachment(`${studentWithDocs.name.replace(/[^\w\s]/gi, '_')}_documents.zip`);
 
     const archive = archiver('zip', {
       zlib: { level: 9 },
@@ -62,7 +140,7 @@ exports.downloadStudentDocuments = async (req, res) => {
     archive.pipe(res);
 
     let fileCount = 0;
-    for (const [key, doc] of Object.entries(student.documents || {})) {
+    for (const [key, doc] of Object.entries(studentWithDocs.documents || {})) {
       if (!doc?.url) continue;
       fileCount++;
 
@@ -77,7 +155,7 @@ exports.downloadStudentDocuments = async (req, res) => {
           name: doc.fileName,
         });
       } catch (err) {
-        console.error(`Error zipping document ${doc.fileName} for student ${student.name}:`, err.message);
+        console.error(`Error zipping document ${doc.fileName}:`, err.message);
       }
     }
 
@@ -98,47 +176,31 @@ exports.downloadStudentDocuments = async (req, res) => {
   }
 };
 
-// Helper to delete physical file
-const deletePhysicalFile = async (publicId) => {
-  if (!publicId) return;
-  if (publicId.startsWith('drive-')) return;
+// @desc    Check if a GR or SR number already exists
+// @route   GET /api/students/check-duplicate
+// @access  Private
+exports.checkDuplicate = async (req, res) => {
+  try {
+    const { field, value, excludeId } = req.query;
+    if (!['grNumber', 'srNumber'].includes(field)) {
+      return res.status(400).json({ success: false, message: 'Invalid duplicate check field' });
+    }
 
-  if (isCloudinaryConfigured()) {
-    try {
-      // Cloudinary deletion
-      // If it's a PDF, we might need to specify resource_type in some configs, or let it auto-detect.
-      // We pass resource_type: 'raw' or auto. Multer storage cloudinary uses file.filename as publicId
-      await cloudinary.uploader.destroy(publicId);
-      console.log(`Cloudinary file deleted: ${publicId}`);
-    } catch (err) {
-      console.error(`Error deleting Cloudinary file ${publicId}:`, err);
+    const query = { [field]: value };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
     }
-  } else {
-    // Local deletion
-    const filePath = path.join(__dirname, '../../uploads', publicId);
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`Local file deleted: ${filePath}`);
-      }
-    } catch (err) {
-      console.error(`Error deleting local file ${filePath}:`, err);
-    }
+
+    const count = await Student.countDocuments(query);
+    res.status(200).json({
+      success: true,
+      exists: count > 0,
+    });
+  } catch (error) {
+    console.error('Error checking duplicate:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// Define valid document fields
-const VALID_DOCUMENTS = [
-  'birthCertificate',
-  'studentAadhaar',
-  'fatherAadhaar',
-  'motherAadhaar',
-  'rationCard',
-  'addressProof',
-  'incomeCertificate',
-  'casteCertificate',
-  'passportPhoto',
-];
 
 // @desc    Get all students (paginated, filtered, searched)
 // @route   GET /api/students
@@ -164,26 +226,47 @@ exports.getStudents = async (req, res) => {
       query.gender = req.query.gender;
     }
 
-    // Search by Name or GR Number
+    if (req.query.casteCategory) {
+      query.casteCategory = req.query.casteCategory;
+    }
+
+    if (req.query.verificationStatus) {
+      query.verificationStatus = req.query.verificationStatus;
+    }
+
+    if (req.query.admissionYear) {
+      const year = parseInt(req.query.admissionYear, 10);
+      const start = new Date(year, 0, 1);
+      const end = new Date(year, 11, 31, 23, 59, 59);
+      query.admissionDate = { $gte: start, $lte: end };
+    }
+
+    // Search by name, GR, SR, Aadhaar, Mobile
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
       query.$or = [
         { name: searchRegex },
         { grNumber: searchRegex },
-        { fatherName: searchRegex },
+        { srNumber: searchRegex },
+        { aadhaarNumber: searchRegex },
+        { mobileNumber1: searchRegex },
+        { mobileNumber2: searchRegex },
       ];
     }
 
-    // Filter by document status (missing documents)
+    // Filter by missing documents
     if (req.query.missingDocument) {
       const docType = req.query.missingDocument;
       if (VALID_DOCUMENTS.includes(docType)) {
-        query[`documents.${docType}`] = { $exists: false };
+        const hasDocStudentIds = await Document.find({ documentType: docType }).distinct('studentId');
+        query._id = { $nin: hasDocStudentIds };
       } else if (docType === 'any') {
-        // Find students who are missing ANY of the 9 documents
-        query.$or = VALID_DOCUMENTS.map((doc) => ({
-          [`documents.${doc}`]: { $exists: false },
-        }));
+        const docCounts = await Document.aggregate([
+          { $group: { _id: '$studentId', count: { $sum: 1 } } },
+          { $match: { count: VALID_DOCUMENTS.length } },
+        ]);
+        const fullyUploadedStudentIds = docCounts.map((d) => d._id);
+        query._id = { $nin: fullyUploadedStudentIds };
       }
     }
 
@@ -195,16 +278,23 @@ exports.getStudents = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    // Attach document completeness count for the list view
+    const studentsWithDocs = [];
+    for (const student of students) {
+      const sWithDocs = await attachDocumentsToStudent(student);
+      studentsWithDocs.push(sWithDocs);
+    }
+
     res.status(200).json({
       success: true,
-      count: students.length,
+      count: studentsWithDocs.length,
       pagination: {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
         total,
       },
-      data: students,
+      data: studentsWithDocs,
     });
   } catch (error) {
     console.error('Error fetching students:', error);
@@ -219,24 +309,17 @@ exports.getStudentById = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
       .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email')
-      .populate('documents.birthCertificate.uploadedBy', 'name')
-      .populate('documents.studentAadhaar.uploadedBy', 'name')
-      .populate('documents.fatherAadhaar.uploadedBy', 'name')
-      .populate('documents.motherAadhaar.uploadedBy', 'name')
-      .populate('documents.rationCard.uploadedBy', 'name')
-      .populate('documents.addressProof.uploadedBy', 'name')
-      .populate('documents.incomeCertificate.uploadedBy', 'name')
-      .populate('documents.casteCertificate.uploadedBy', 'name')
-      .populate('documents.passportPhoto.uploadedBy', 'name');
+      .populate('updatedBy', 'name email');
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
+    const studentWithDocs = await attachDocumentsToStudent(student);
+
     res.status(200).json({
       success: true,
-      data: student,
+      data: studentWithDocs,
     });
   } catch (error) {
     console.error('Error fetching student:', error);
@@ -249,20 +332,39 @@ exports.getStudentById = async (req, res) => {
 // @access  Private
 exports.createStudent = async (req, res) => {
   try {
-    const { grNumber } = req.body;
+    const { grNumber, srNumber, aadhaarNumber, mobileNumber1 } = req.body;
 
-    // Check if GR number is already in use
-    const existingStudent = await Student.findOne({ grNumber });
-    if (existingStudent) {
+    // Aadhaar Validations
+    if (!/^\d{12}$/.test(aadhaarNumber)) {
+      return res.status(400).json({ success: false, message: 'Aadhaar Number must be exactly 12 digits.' });
+    }
+    // Mobile Validation
+    if (!/^\d{10}$/.test(mobileNumber1)) {
+      return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
+    }
+
+    // Check duplicate GR
+    const existingGr = await Student.findOne({ grNumber });
+    if (existingGr) {
       return res.status(400).json({
         success: false,
         message: `A student with GR Number '${grNumber}' already exists.`,
       });
     }
 
+    // Check duplicate SR
+    const existingSr = await Student.findOne({ srNumber });
+    if (existingSr) {
+      return res.status(400).json({
+        success: false,
+        message: `A student with SR Number '${srNumber}' already exists.`,
+      });
+    }
+
     // Attach auditing info
     req.body.createdBy = req.user._id;
     req.body.updatedBy = req.user._id;
+    req.body.verificationStatus = 'Pending';
 
     const student = await Student.create(req.body);
 
@@ -272,7 +374,7 @@ exports.createStudent = async (req, res) => {
       performedBy: req.user._id,
       studentId: student._id,
       studentName: student.name,
-      details: `Registered student ${student.name} with GR No: ${student.grNumber}`,
+      details: `Registered student ${student.name} with GR No: ${student.grNumber}, SR No: ${student.srNumber}`,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
@@ -295,19 +397,40 @@ exports.createStudent = async (req, res) => {
 // @access  Private
 exports.updateStudent = async (req, res) => {
   try {
+    const { grNumber, srNumber, aadhaarNumber, mobileNumber1 } = req.body;
     let student = await Student.findById(req.params.id);
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
+    // Aadhaar Validations
+    if (aadhaarNumber && !/^\d{12}$/.test(aadhaarNumber)) {
+      return res.status(400).json({ success: false, message: 'Aadhaar Number must be exactly 12 digits.' });
+    }
+    // Mobile Validation
+    if (mobileNumber1 && !/^\d{10}$/.test(mobileNumber1)) {
+      return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
+    }
+
     // Check GR number conflict
-    if (req.body.grNumber && req.body.grNumber !== student.grNumber) {
-      const grConflict = await Student.findOne({ grNumber: req.body.grNumber });
+    if (grNumber && grNumber !== student.grNumber) {
+      const grConflict = await Student.findOne({ grNumber });
       if (grConflict) {
         return res.status(400).json({
           success: false,
-          message: `GR Number '${req.body.grNumber}' is already allocated to another student`,
+          message: `GR Number '${grNumber}' is already allocated to another student`,
+        });
+      }
+    }
+
+    // Check SR number conflict
+    if (srNumber && srNumber !== student.srNumber) {
+      const srConflict = await Student.findOne({ srNumber });
+      if (srConflict) {
+        return res.status(400).json({
+          success: false,
+          message: `SR Number '${srNumber}' is already allocated to another student`,
         });
       }
     }
@@ -315,13 +438,12 @@ exports.updateStudent = async (req, res) => {
     // Identify changed fields for Audit Log
     const changes = [];
     Object.keys(req.body).forEach((key) => {
-      // Ignore timestamp/audit fields
-      if (['updatedBy', 'createdBy', 'documents', '_id', 'createdAt', 'updatedAt'].includes(key)) return;
-      
+      if (['updatedBy', 'createdBy', '_id', 'createdAt', 'updatedAt', 'name'].includes(key)) return;
+
       let oldVal = student[key];
       let newVal = req.body[key];
 
-      if (key === 'dob' && oldVal && newVal) {
+      if ((key === 'dob' || key === 'admissionDate' || key === 'dobAsPerAadhaar') && oldVal && newVal) {
         oldVal = new Date(oldVal).toISOString().slice(0, 10);
         newVal = new Date(newVal).toISOString().slice(0, 10);
       }
@@ -375,17 +497,19 @@ exports.deleteStudent = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    // Delete all files from storage
+    // Delete all files from storage and database
+    const docs = await Document.find({ studentId: student._id });
     const deletePromises = [];
-    VALID_DOCUMENTS.forEach((docType) => {
-      if (student.documents && student.documents[docType] && student.documents[docType].publicId) {
-        deletePromises.push(deletePhysicalFile(student.documents[docType].publicId));
+    docs.forEach((doc) => {
+      if (doc.publicId) {
+        deletePromises.push(deletePhysicalFile(doc.publicId));
       }
     });
 
     await Promise.all(deletePromises);
+    await Document.deleteMany({ studentId: student._id });
 
-    // Delete record
+    // Delete student record
     await Student.findByIdAndDelete(req.params.id);
 
     // Log deletion
@@ -393,7 +517,7 @@ exports.deleteStudent = async (req, res) => {
       action: 'DELETE_STUDENT',
       performedBy: req.user._id,
       studentName: student.name,
-      details: `Deleted student ${student.name} (GR No: ${student.grNumber}) and all associated files`,
+      details: `Deleted student ${student.name} (GR No: ${student.grNumber}, SR No: ${student.srNumber}) and all documents`,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
@@ -442,29 +566,33 @@ exports.uploadDocument = async (req, res) => {
     const student = await Student.findById(id);
     if (!student) {
       if (req.file) {
-        const fileIdToDelete = req.file.filename;
-        await deletePhysicalFile(fileIdToDelete);
+        await deletePhysicalFile(req.file.filename);
       }
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    // Check if document already exists, if so delete the old one
-    if (student.documents && student.documents[documentType] && student.documents[documentType].publicId) {
-      await deletePhysicalFile(student.documents[documentType].publicId);
+    // Check if document already exists, if so delete physical file
+    const existingDoc = await Document.findOne({ studentId: id, documentType });
+    if (existingDoc && existingDoc.publicId) {
+      await deletePhysicalFile(existingDoc.publicId);
     }
 
-    // Update student document details
-    student.documents = student.documents || {};
-    student.documents[documentType] = {
-      url: fileUrl,
-      publicId: filePublicId,
-      fileName: originalName,
-      uploadedBy: req.user._id,
-      uploadedAt: new Date(),
-    };
-    student.updatedBy = req.user._id;
+    // Save/Update Document
+    await Document.findOneAndUpdate(
+      { studentId: id, documentType },
+      {
+        fileUrl,
+        publicId: filePublicId,
+        fileName: originalName,
+        uploadDate: new Date(),
+        status: 'Pending',
+        remarks: '',
+      },
+      { upsert: true, new: true }
+    );
 
-    await student.save();
+    // Update overall Student status back to pending since a new file was uploaded
+    await Student.findByIdAndUpdate(id, { verificationStatus: 'Pending' });
 
     // Log upload action
     await AuditLog.create({
@@ -476,10 +604,13 @@ exports.uploadDocument = async (req, res) => {
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
+    const updatedStudent = await Student.findById(id);
+    const result = await attachDocumentsToStudent(updatedStudent);
+
     res.status(200).json({
       success: true,
       message: 'Document uploaded successfully',
-      data: student,
+      data: result,
     });
   } catch (error) {
     console.error('Error uploading document:', error);
@@ -503,19 +634,30 @@ exports.deleteDocument = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    if (!student.documents || !student.documents[documentType] || !student.documents[documentType].publicId) {
+    const doc = await Document.findOne({ studentId: id, documentType });
+    if (!doc) {
       return res.status(400).json({ success: false, message: 'Document does not exist' });
     }
 
-    const fileName = student.documents[documentType].fileName;
-
     // Delete file physically
-    await deletePhysicalFile(student.documents[documentType].publicId);
+    if (doc.publicId) {
+      await deletePhysicalFile(doc.publicId);
+    }
 
-    // Remove document object path
-    student.documents[documentType] = undefined;
+    // Remove document record
+    await Document.deleteOne({ studentId: id, documentType });
+
+    // Recalculate Student Status
+    const remainingDocs = await Document.find({ studentId: id });
+    const hasRejected = remainingDocs.some((d) => d.status === 'Rejected');
+    const hasPending = remainingDocs.length < VALID_DOCUMENTS.length || remainingDocs.some((d) => d.status === 'Pending');
+
+    let overallStatus = 'Pending';
+    if (hasRejected) overallStatus = 'Rejected';
+    else if (!hasPending && remainingDocs.length === VALID_DOCUMENTS.length) overallStatus = 'Verified';
+
+    student.verificationStatus = overallStatus;
     student.updatedBy = req.user._id;
-
     await student.save();
 
     // Log deletion
@@ -524,18 +666,77 @@ exports.deleteDocument = async (req, res) => {
       performedBy: req.user._id,
       studentId: student._id,
       studentName: student.name,
-      details: `Deleted ${documentType} (${fileName}) for student ${student.name}`,
+      details: `Deleted ${documentType} (${doc.fileName}) for student ${student.name}`,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+    });
+
+    const result = await attachDocumentsToStudent(student);
+
+    res.status(200).json({
+      success: true,
+      message: 'Document deleted successfully',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting document' });
+  }
+};
+
+// @desc    Verify a single document of a student
+// @route   PUT /api/students/:id/document/:documentType/verify
+// @access  Private
+exports.verifyDocument = async (req, res) => {
+  try {
+    const { id, documentType } = req.params;
+    const { status, remarks } = req.body;
+
+    if (!['Verified', 'Rejected', 'Pending'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid verification status' });
+    }
+
+    const doc = await Document.findOne({ studentId: id, documentType });
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Document not found or not uploaded yet.' });
+    }
+
+    doc.status = status;
+    doc.remarks = remarks || '';
+    doc.verifiedBy = req.user._id;
+    await doc.save();
+
+    // Recalculate Student Status
+    const allDocs = await Document.find({ studentId: id });
+    const hasRejected = allDocs.some((d) => d.status === 'Rejected');
+    const verifiedCount = allDocs.filter((d) => d.status === 'Verified').length;
+    const isAllVerified = verifiedCount === VALID_DOCUMENTS.length; // all 11 verified
+
+    let overallStatus = 'Pending';
+    if (hasRejected) {
+      overallStatus = 'Rejected';
+    } else if (isAllVerified) {
+      overallStatus = 'Verified';
+    }
+
+    await Student.findByIdAndUpdate(id, { verificationStatus: overallStatus });
+
+    // Log Verification Action
+    await AuditLog.create({
+      action: 'UPDATE_STUDENT',
+      performedBy: req.user._id,
+      studentId: id,
+      details: `Document ${documentType} marked as ${status}. Remarks: "${remarks || ''}"`,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     });
 
     res.status(200).json({
       success: true,
-      message: 'Document deleted successfully',
-      data: student,
+      message: 'Document verification updated successfully',
+      data: doc,
     });
   } catch (error) {
-    console.error('Error deleting document:', error);
-    res.status(500).json({ success: false, message: 'Server error deleting document' });
+    console.error('Error verifying document:', error);
+    res.status(500).json({ success: false, message: 'Server error verifying document' });
   }
 };
 
@@ -549,47 +750,49 @@ exports.exportCSV = async (req, res) => {
     const csvHeaders = [
       'Name',
       'GR Number',
+      'SR Number',
       'Class',
       'Division',
       'DOB',
       'Gender',
-      'Father Name',
-      'Mother Name',
-      'Mobile',
-      'Address',
-      'Village',
-      'Taluka',
-      'District',
+      'Caste Category',
+      'Aadhaar Number',
+      'Mobile Number 1',
+      'IFSC Code',
+      'Bank Account Number',
+      'Verification Status',
       'Documents Uploaded Count',
     ].join(',');
 
-    const csvRows = students.map((s) => {
+    const csvRows = [];
+    for (const s of students) {
+      const studentWithDocs = await attachDocumentsToStudent(s);
       let uploadCount = 0;
-      if (s.documents) {
-        VALID_DOCUMENTS.forEach((doc) => {
-          if (s.documents[doc] && s.documents[doc].url) uploadCount++;
-        });
-      }
+      VALID_DOCUMENTS.forEach((doc) => {
+        if (studentWithDocs.documents[doc]?.url) uploadCount++;
+      });
 
       const dobStr = s.dob ? new Date(s.dob).toISOString().slice(0, 10) : '';
 
-      return [
-        `"${s.name.replace(/"/g, '""')}"`,
-        `"${s.grNumber.replace(/"/g, '""')}"`,
-        `"${s.class.replace(/"/g, '""')}"`,
-        `"${s.division.replace(/"/g, '""')}"`,
-        `"${dobStr}"`,
-        `"${s.gender}"`,
-        `"${s.fatherName.replace(/"/g, '""')}"`,
-        `"${s.motherName.replace(/"/g, '""')}"`,
-        `"${s.mobile.replace(/"/g, '""')}"`,
-        `"${s.address.replace(/"/g, '""')}"`,
-        `"${(s.village || '').replace(/"/g, '""')}"`,
-        `"${(s.taluka || '').replace(/"/g, '""')}"`,
-        `"${(s.district || '').replace(/"/g, '""')}"`,
-        uploadCount,
-      ].join(',');
-    });
+      csvRows.push(
+        [
+          `"${s.name.replace(/"/g, '""')}"`,
+          `"${s.grNumber.replace(/"/g, '""')}"`,
+          `"${s.srNumber ? s.srNumber.replace(/"/g, '""') : ''}"`,
+          `"${s.class.replace(/"/g, '""')}"`,
+          `"${s.division.replace(/"/g, '""')}"`,
+          `"${dobStr}"`,
+          `"${s.gender}"`,
+          `"${s.casteCategory || ''}"`,
+          `"${s.aadhaarNumber || ''}"`,
+          `"${s.mobileNumber1 || ''}"`,
+          `"${s.ifscCode || ''}"`,
+          `"${s.bankAccountNumber || ''}"`,
+          `"${s.verificationStatus || 'Pending'}"`,
+          uploadCount,
+        ].join(',')
+      );
+    }
 
     const csvData = [csvHeaders, ...csvRows].join('\n');
 
@@ -609,53 +812,48 @@ exports.exportExcel = async (req, res) => {
   try {
     const students = await Student.find({}).sort({ class: 1, name: 1 });
 
-    const data = students.map((s) => {
+    const data = [];
+    for (const s of students) {
+      const studentWithDocs = await attachDocumentsToStudent(s);
       let uploadCount = 0;
       const docStatuses = {};
+
       VALID_DOCUMENTS.forEach((doc) => {
-        const uploaded = !!(s.documents && s.documents[doc] && s.documents[doc].url);
+        const docRecord = studentWithDocs.documents[doc];
+        const uploaded = !!docRecord?.url;
         if (uploaded) uploadCount++;
-        docStatuses[doc] = uploaded ? 'Uploaded' : 'Pending';
+        docStatuses[doc] = uploaded ? `${docRecord.status || 'Uploaded'}` : 'Pending';
       });
 
-      return {
+      data.push({
         'Student Name': s.name,
         'GR Number': s.grNumber,
+        'SR Number': s.srNumber || '',
         Class: s.class,
         Division: s.division,
         DOB: s.dob ? new Date(s.dob).toISOString().slice(0, 10) : '',
         Gender: s.gender,
-        'Father Name': s.fatherName,
-        'Mother Name': s.motherName,
-        Mobile: s.mobile,
-        Address: s.address,
-        Village: s.village || '',
-        Taluka: s.taluka || '',
-        District: s.district || '',
-        'Birth Certificate': docStatuses.birthCertificate,
-        'Student Aadhaar': docStatuses.studentAadhaar,
-        'Father Aadhaar': docStatuses.fatherAadhaar,
-        'Mother Aadhaar': docStatuses.motherAadhaar,
-        'Ration Card': docStatuses.rationCard,
-        'Address Proof': docStatuses.addressProof,
-        'Income Certificate': docStatuses.incomeCertificate,
-        'Caste Certificate': docStatuses.casteCertificate,
-        'Passport Photo': docStatuses.passportPhoto,
+        Caste: s.caste || '',
+        Category: s.casteCategory || '',
+        'Aadhaar Number': s.aadhaarNumber || '',
+        'Mobile Number 1': s.mobileNumber1 || '',
+        'Mobile Number 2': s.mobileNumber2 || '',
+        'IFSC Code': s.ifscCode || '',
+        'Bank Account Number': s.bankAccountNumber || '',
+        'Account Holder Name': s.accountHolderName || '',
+        'Verification Status': s.verificationStatus || 'Pending',
         'Total Uploaded Docs': uploadCount,
-      };
-    });
+        ...docStatuses,
+      });
+    }
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Students');
 
-    // Generate buffer
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="students_document_report.xlsx"'
-    );
+    res.setHeader('Content-Disposition', 'attachment; filename="students_document_report.xlsx"');
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -681,89 +879,82 @@ exports.exportPDF = async (req, res) => {
 
     doc.pipe(res);
 
-    // Title Section
     doc.fontSize(20).text('DocElex - Student Document Report', { align: 'center' });
     doc.fontSize(10).text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
     doc.moveDown(2);
 
-    // Table Header
     const tableTop = 100;
     const itemX = 30;
     const grX = 180;
-    const classX = 250;
-    const divX = 300;
-    const phoneX = 350;
-    const docsX = 450;
-    const missingX = 520;
+    const srX = 240;
+    const classX = 300;
+    const divX = 350;
+    const phoneX = 400;
+    const statusX = 480;
+    const docsX = 560;
 
     doc.fontSize(11).font('Helvetica-Bold');
     doc.text('Student Name', itemX, tableTop);
     doc.text('GR No.', grX, tableTop);
+    doc.text('SR No.', srX, tableTop);
     doc.text('Class', classX, tableTop);
     doc.text('Div', divX, tableTop);
     doc.text('Mobile', phoneX, tableTop);
+    doc.text('Verification', statusX, tableTop);
     doc.text('Docs Count', docsX, tableTop);
-    doc.text('Missing Documents', missingX, tableTop);
 
-    // Draw header line
     doc.moveTo(30, tableTop + 15).lineTo(800, tableTop + 15).stroke();
 
     let y = tableTop + 25;
     doc.font('Helvetica').fontSize(9);
 
-    students.forEach((student, index) => {
-      // Page budget check
+    for (const student of students) {
+      const studentWithDocs = await attachDocumentsToStudent(student);
+
       if (y > 520) {
         doc.addPage({ layout: 'landscape' });
-        y = 50; // top of new page
-        
+        y = 50;
+
         doc.fontSize(11).font('Helvetica-Bold');
         doc.text('Student Name', itemX, y);
         doc.text('GR No.', grX, y);
+        doc.text('SR No.', srX, y);
         doc.text('Class', classX, y);
         doc.text('Div', divX, y);
         doc.text('Mobile', phoneX, y);
+        doc.text('Verification', statusX, y);
         doc.text('Docs Count', docsX, y);
-        doc.text('Missing Documents', missingX, y);
         doc.moveTo(30, y + 15).lineTo(800, y + 15).stroke();
         y += 25;
         doc.font('Helvetica').fontSize(9);
       }
 
       let uploadCount = 0;
-      const missingList = [];
       VALID_DOCUMENTS.forEach((docName) => {
-        if (student.documents && student.documents[docName] && student.documents[docName].url) {
+        if (studentWithDocs.documents[docName]?.url) {
           uploadCount++;
-        } else {
-          // Add formatted short name to missing list
-          missingList.push(docName.replace('birthCertificate', 'Birth Cert').replace('Aadhaar', ' Adh').replace('rationCard', 'Ration').replace('addressProof', 'Addr Proof').replace('incomeCertificate', 'Income').replace('casteCertificate', 'Caste').replace('passportPhoto', 'Photo'));
         }
       });
 
-      const missingText = missingList.length === 0 ? 'None (Complete)' : missingList.slice(0, 3).join(', ') + (missingList.length > 3 ? '...' : '');
-
-      // Limit student name length to avoid overlapping
-      const truncatedName = student.name.length > 25 ? student.name.substring(0, 22) + '...' : student.name;
+      const truncatedName = student.name.length > 22 ? student.name.substring(0, 19) + '...' : student.name;
 
       doc.text(truncatedName, itemX, y);
       doc.text(student.grNumber, grX, y);
+      doc.text(student.srNumber || '-', srX, y);
       doc.text(student.class, classX, y);
       doc.text(student.division, divX, y);
-      doc.text(student.mobile, phoneX, y);
-      doc.text(`${uploadCount} / 9`, docsX, y);
-      doc.text(missingText, missingX, y);
+      doc.text(student.mobileNumber1, phoneX, y);
+      doc.text(student.verificationStatus || 'Pending', statusX, y);
+      doc.text(`${uploadCount} / ${VALID_DOCUMENTS.length}`, docsX, y);
 
-      // Separator line
       doc.moveTo(30, y + 12).lineTo(800, y + 12).strokeColor('#e4e4e4').lineWidth(0.5).stroke();
 
       y += 20;
-    });
+    }
 
     doc.end();
   } catch (error) {
     console.error('Export PDF error:', error);
-    // Don't crash connection, send error message if not started piping
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: 'Failed to export PDF' });
     }

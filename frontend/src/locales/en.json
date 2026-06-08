@@ -170,14 +170,16 @@
   },
   "documents": {
     "birthCertificate": "Birth Certificate",
-    "studentAadhaar": "Student Aadhaar",
-    "fatherAadhaar": "Father Aadhaar",
-    "motherAadhaar": "Mother Aadhaar",
-    "rationCard": "Ration Card",
-    "addressProof": "Address Proof",
     "incomeCertificate": "Income Certificate",
-    "casteCertificate": "Caste Certificate",
-    "passportPhoto": "Passport Photo"
+    "rationCard": "Ration Card",
+    "studentCasteCertificate": "Student Caste Certificate",
+    "fatherCasteCertificate": "Father Caste Certificate",
+    "studentBankPassbook": "Student Bank Passbook",
+    "fatherBankPassbook": "Father Bank Passbook",
+    "motherBankPassbook": "Mother Bank Passbook",
+    "motherAadhaar": "Mother Aadhaar",
+    "fatherAadhaar": "Father Aadhaar",
+    "studentAadhaar": "Student Aadhaar"
   },
   "audit": {
     "title": "System Audit Logs",

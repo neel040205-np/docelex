@@ -1,40 +1,144 @@
 const mongoose = require('mongoose');
 
-const DocumentSchema = new mongoose.Schema({
-  url: {
-    type: String,
-    required: true,
-  },
-  publicId: {
-    type: String,
-    required: true, // for Cloudinary deletion, or file name if local
-  },
-  fileName: {
-    type: String,
-    required: true,
-  },
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false,///////////////
-  },
-  uploadedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
 const StudentSchema = new mongoose.Schema(
   {
-    name: {
+    // Section 1: Basic Details
+    srNumber: {
       type: String,
-      required: [true, 'Student name is required'],
+      required: [true, 'SR Number is required'],
+      unique: true,
       trim: true,
     },
     grNumber: {
       type: String,
       required: [true, 'GR Number is required'],
       unique: true,
+      trim: true,
+    },
+    surname: {
+      type: String,
+      required: [true, 'Surname is required'],
+      trim: true,
+    },
+    firstName: {
+      type: String,
+      required: [true, 'First Name is required'],
+      trim: true,
+    },
+    fatherName: {
+      type: String,
+      required: [true, "Father's Name is required"],
+      trim: true,
+    },
+    grandFatherName: {
+      type: String,
+      required: [true, "Grand Father's Name is required"],
+      trim: true,
+    },
+    motherName: {
+      type: String,
+      required: [true, "Mother's Name is required"],
+      trim: true,
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other'],
+      required: [true, 'Gender is required'],
+    },
+    dob: {
+      type: Date,
+      required: [true, 'Date of Birth is required'],
+    },
+    admissionDate: {
+      type: Date,
+      required: [true, 'Admission Date is required'],
+    },
+    caste: {
+      type: String,
+      required: [true, 'Caste is required'],
+      trim: true,
+    },
+    casteCategory: {
+      type: String,
+      enum: ['General', 'OBC', 'SC', 'ST', 'EWS'],
+      required: [true, 'Caste Category is required'],
+    },
+    penNumber: {
+      type: String,
+      trim: true,
+    },
+    apaarId: {
+      type: String,
+      trim: true,
+    },
+    udiseNumber: {
+      type: String,
+      trim: true,
+    },
+    nameAsPerChildTracking: {
+      type: String,
+      trim: true,
+    },
+    nameAsPerUdisePlus: {
+      type: String,
+      trim: true,
+    },
+
+    // Section 2: Aadhaar Details
+    aadhaarNumber: {
+      type: String,
+      required: [true, 'Aadhaar Number is required'],
+      trim: true,
+    },
+    nameAsPerAadhaar: {
+      type: String,
+      required: [true, 'Name as per Aadhaar is required'],
+      trim: true,
+    },
+    dobAsPerAadhaar: {
+      type: Date,
+      required: [true, 'Date of Birth as per Aadhaar is required'],
+    },
+
+    // Section 3: Bank Details
+    bankAccountNumber: {
+      type: String,
+      required: [true, 'Student Bank Account Number is required'],
+      trim: true,
+    },
+    ifscCode: {
+      type: String,
+      required: [true, 'IFSC Code is required'],
+      trim: true,
+    },
+    accountHolderName: {
+      type: String,
+      required: [true, 'Account Holder Name is required'],
+      trim: true,
+    },
+
+    // Section 4: Family Details
+    motherAadhaarNumber: {
+      type: String,
+      trim: true,
+    },
+    fatherAadhaarNumber: {
+      type: String,
+      trim: true,
+    },
+    mobileNumber1: {
+      type: String,
+      required: [true, 'Mobile Number 1 is required'],
+      trim: true,
+    },
+    mobileNumber2: {
+      type: String,
+      trim: true,
+    },
+
+    // Legacy and UI compatibility fields
+    name: {
+      type: String,
       trim: true,
     },
     class: {
@@ -47,59 +151,13 @@ const StudentSchema = new mongoose.Schema(
       required: [true, 'Division is required'],
       trim: true,
     },
-    dob: {
-      type: Date,
-      required: [true, 'Date of Birth is required'],
-    },
-    gender: {
+    verificationStatus: {
       type: String,
-      enum: ['male', 'female', 'other'],
-      required: [true, 'Gender is required'],
+      enum: ['Pending', 'Verified', 'Rejected'],
+      default: 'Pending',
     },
-    fatherName: {
-      type: String,
-      required: [true, 'Father name is required'],
-      trim: true,
-    },
-    motherName: {
-      type: String,
-      required: [true, 'Mother name is required'],
-      trim: true,
-    },
-    mobile: {
-      type: String,
-      required: [true, 'Mobile number is required'],
-      trim: true,
-    },
-    address: {
-      type: String,
-      required: [true, 'Address is required'],
-      trim: true,
-    },
-    village: {
-      type: String,
-      trim: true,
-    },
-    taluka: {
-      type: String,
-      trim: true,
-    },
-    district: {
-      type: String,
-      trim: true,
-    },
-    // Document Uploads
-    documents: {
-      birthCertificate: DocumentSchema,
-      studentAadhaar: DocumentSchema,
-      fatherAadhaar: DocumentSchema,
-      motherAadhaar: DocumentSchema,
-      rationCard: DocumentSchema,
-      addressProof: DocumentSchema,
-      incomeCertificate: DocumentSchema,
-      casteCertificate: DocumentSchema,
-      passportPhoto: DocumentSchema,
-    },
+
+    // Audit tracking fields
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -116,7 +174,19 @@ const StudentSchema = new mongoose.Schema(
   }
 );
 
-// Composite or index searches
-StudentSchema.index({ name: 'text', grNumber: 'text' });
+// Pre-save hook to auto-populate the 'name' field for search capability
+StudentSchema.pre('save', function (next) {
+  this.name = `${this.surname} ${this.firstName} ${this.fatherName}`.trim();
+  next();
+});
+
+// Composite indices for performant search & filters
+StudentSchema.index({
+  name: 'text',
+  grNumber: 'text',
+  srNumber: 'text',
+  aadhaarNumber: 'text',
+  mobileNumber1: 'text',
+});
 
 module.exports = mongoose.model('Student', StudentSchema);
