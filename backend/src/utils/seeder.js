@@ -269,33 +269,27 @@ const mockStudentsData = (teacherId) => [
   },
 ];
 
+const getOrCreateUser = async (userData) => {
+  let user = await User.findOne({ email: userData.email.toLowerCase() });
+  if (!user) {
+    user = await User.create(userData);
+    console.log(`Created user: ${userData.email}`);
+  } else {
+    console.log(`User already exists: ${userData.email}`);
+  }
+  return user;
+};
+
 const seedData = async () => {
   try {
     await connectDB();
 
-    // Clear existing data
-    console.log('Clearing existing database records...');
-    await User.deleteMany({});
-
-    // Drop dynamic collections to start fresh
-    const collections = await mongoose.connection.db.listCollections().toArray();
-    for (const coll of collections) {
-      if (
-        coll.name.startsWith('students_') || 
-        coll.name.startsWith('documents_') || 
-        coll.name.startsWith('auditlogs_') ||
-        coll.name === 'students' ||
-        coll.name === 'documents' ||
-        coll.name === 'auditlogs'
-      ) {
-        console.log(`Dropping collection: ${coll.name}`);
-        await mongoose.connection.db.dropCollection(coll.name);
-      }
-    }
-
     console.log('Seeding teacher accounts...');
-    const teacherUser = await User.create({
-      name: 'Neel', email: 'teacher@docneel.com', password: 'Neel@1234', role: 'teacher'
+    const teacherUser = await getOrCreateUser({
+      name: 'Neel',
+      email: 'teacher@docneel.com',
+      password: 'Neel@1234',
+      role: 'teacher'
     });
 
     const additionalTeachers = [
@@ -309,16 +303,17 @@ const seedData = async () => {
       { name: 'Sanjay', email: 'teacher@docsanjay.com', password: 'Sanjay@1234', role: 'teacher' },
       { name: 'Ritu', email: 'teacher@docritu.com', password: 'Ritu@1234', role: 'teacher' },
       { name: 'Raman', email: 'teacher@docraman.com', password: 'Raman@1234', role: 'teacher' }
-      
     ];
 
-    await User.create(additionalTeachers);
+    for (const teacherData of additionalTeachers) {
+      await getOrCreateUser(teacherData);
+    }
 
     console.log(`Seeded Users:`);
-    console.log(`- Default: teacher@docelex.com / Elex@1234`);
+    console.log(`- Default: teacher@docneel.com / Neel@1234`);
     console.log(`- Hitendra: teacher@dochitendra.com / Hitendra@1234`);
     console.log(`- Anila: teacher@docanila.com / Anila@1234`);
-    console.log(`- Neel: teacher@docneel.com / Neel@1234`);
+    console.log(`- Elex: teacher@docElex.com / Elex@1234`);
 
     // Get dynamic models for teacherUser
     const StudentModel = getStudentModel(teacherUser._id);
@@ -372,45 +367,91 @@ const seedData = async () => {
       },
     };
 
-    // Save
-    const seededStudents = await StudentModel.create(studentsData);
-    console.log(`Successfully seeded ${seededStudents.length} mock student records.`);
+    // Save student records only if they don't already exist
+    const seededStudents = [];
+    const newlySeededStudents = [];
 
-    // Write some initial Audit Logs
-    console.log('Writing default audit logs...');
-    await AuditLogModel.create([
-      {
-        action: 'CREATE_STUDENT',
-        performedBy: teacherUser._id,
-        studentId: seededStudents[0]._id,
-        studentName: seededStudents[0].name,
-        details: 'Initial system seeding: Aarav Sharma registered',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      },
-      {
-        action: 'UPLOAD_DOCUMENT',
-        performedBy: teacherUser._id,
-        studentId: seededStudents[0]._id,
-        studentName: seededStudents[0].name,
-        details: 'Uploaded Birth Certificate for Aarav Sharma',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 1.8),
-      },
-      {
-        action: 'CREATE_STUDENT',
-        performedBy: teacherUser._id,
-        studentId: seededStudents[1]._id,
-        studentName: seededStudents[1].name,
-        details: 'Diya Patel registered by Teacher',
-        createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-      },
-    ]);
+    for (const student of studentsData) {
+      const existingStudent = await StudentModel.findOne({
+        $or: [
+          { srNumber: student.srNumber },
+          { grNumber: student.grNumber }
+        ]
+      });
 
-    console.log('Database Seeding Completed Successfully.');
+      if (!existingStudent) {
+        // Calculate name field before save to align with model behavior
+        student.name = `${student.surname} ${student.firstName} ${student.fatherName}`.trim();
+        const newStudent = await StudentModel.create(student);
+        seededStudents.push(newStudent);
+        newlySeededStudents.push(newStudent);
+        console.log(`Created mock student: ${student.firstName} ${student.surname} (${student.srNumber})`);
+      } else {
+        seededStudents.push(existingStudent);
+        console.log(`Student already exists: ${student.firstName} ${student.surname} (${student.srNumber}). Skipping creation.`);
+      }
+    }
+
+    if (newlySeededStudents.length > 0) {
+      console.log(`Successfully seeded ${newlySeededStudents.length} new mock student records.`);
+    } else {
+      console.log('No new mock student records needed to be seeded.');
+    }
+
+    // Write some initial Audit Logs only if no audit logs exist and we seeded new students
+    const auditLogsCount = await AuditLogModel.countDocuments({});
+    if (auditLogsCount === 0 && newlySeededStudents.length > 0) {
+      console.log('Writing default audit logs...');
+      const logsToCreate = [];
+
+      const wasAaravCreated = newlySeededStudents.some(s => s.srNumber === 'SR10001');
+      const wasDiyaCreated = newlySeededStudents.some(s => s.srNumber === 'SR10002');
+
+      if (wasAaravCreated && seededStudents[0]) {
+        logsToCreate.push({
+          action: 'CREATE_STUDENT',
+          performedBy: teacherUser._id,
+          studentId: seededStudents[0]._id,
+          studentName: seededStudents[0].name,
+          details: 'Initial system seeding: Aarav Sharma registered',
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+        });
+        logsToCreate.push({
+          action: 'UPLOAD_DOCUMENT',
+          performedBy: teacherUser._id,
+          studentId: seededStudents[0]._id,
+          studentName: seededStudents[0].name,
+          details: 'Uploaded Birth Certificate for Aarav Sharma',
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 1.8),
+        });
+      }
+
+      if (wasDiyaCreated && seededStudents[1]) {
+        logsToCreate.push({
+          action: 'CREATE_STUDENT',
+          performedBy: teacherUser._id,
+          studentId: seededStudents[1]._id,
+          studentName: seededStudents[1].name,
+          details: 'Diya Patel registered by Teacher',
+          createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
+        });
+      }
+
+      if (logsToCreate.length > 0) {
+        await AuditLogModel.create(logsToCreate);
+        console.log(`Successfully seeded ${logsToCreate.length} default audit logs.`);
+      }
+    } else {
+      console.log('Skipping default audit logs creation (either logs exist or no new mock students were seeded).');
+    }
+
+    console.log('Database Seeding Completed Safely.');
     process.exit(0);
   } catch (error) {
-    console.error('Error seeding data:', error);
+    console.error('Error seeding data safely:', error);
     process.exit(1);
   }
 };
 
 seedData();
+
