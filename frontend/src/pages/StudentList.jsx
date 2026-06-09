@@ -275,9 +275,20 @@ export const StudentList = () => {
       render: (_, record) => `${record.class} - ${record.division}`,
     },
     {
-      title: 'Mobile',
-      dataIndex: 'mobileNumber1',
-      key: 'mobile',
+      title: 'Mobile / Aadhaar',
+      key: 'mobileAadhaar',
+      render: (_, record) => (
+        <div>
+          <div>
+            <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>M: </span>
+            <span>{record.mobileNumber1}</span>
+          </div>
+          <div style={{ marginTop: 2 }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>A: </span>
+            <span style={{ fontFamily: 'monospace' }}>{record.aadhaarNumber || '-'}</span>
+          </div>
+        </div>
+      ),
     },
     {
       title: 'Verification Status',
@@ -616,9 +627,13 @@ export const StudentList = () => {
                         {student.verificationStatus || 'Pending'}
                       </Tag>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Mobile:</span>
                       <span style={{ fontWeight: 500 }}>{student.mobileNumber1}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Aadhaar:</span>
+                      <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{student.aadhaarNumber || '-'}</span>
                     </div>
                   </div>
 

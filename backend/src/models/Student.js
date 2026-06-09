@@ -133,6 +133,10 @@ const StudentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    mobileNumber3: {
+      type: String,
+      trim: true,
+    },
 
     // Legacy and UI compatibility fields
     name: {

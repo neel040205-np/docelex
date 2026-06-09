@@ -515,7 +515,7 @@ export const StudentEdit = () => {
             </Row>
 
             <Row gutter={16}>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item
                   name="mobileNumber1"
                   label="Mobile Number 1"
@@ -527,7 +527,7 @@ export const StudentEdit = () => {
                   <Input placeholder="Primary Mobile Contact" maxLength={10} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item
                   name="mobileNumber2"
                   label="Mobile Number 2"
@@ -536,6 +536,17 @@ export const StudentEdit = () => {
                   ]}
                 >
                   <Input placeholder="Alternative Contact" maxLength={10} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="mobileNumber3"
+                  label="Mobile Number 3"
+                  rules={[
+                    { pattern: /^\d{10}$/, message: 'Must be exactly 10 digits.' }
+                  ]}
+                >
+                  <Input placeholder="Mobile Number 3" maxLength={10} />
                 </Form.Item>
               </Col>
             </Row>

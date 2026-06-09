@@ -370,6 +370,7 @@ exports.getStudents = async (req, res) => {
         { aadhaarNumber: searchRegex },
         { mobileNumber1: searchRegex },
         { mobileNumber2: searchRegex },
+        { mobileNumber3: searchRegex },
       ];
     }
 
@@ -472,6 +473,12 @@ exports.createStudent = async (req, res) => {
     if (!/^\d{10}$/.test(mobileNumber1)) {
       return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
     }
+    if (req.body.mobileNumber2 && !/^\d{10}$/.test(req.body.mobileNumber2)) {
+      return res.status(400).json({ success: false, message: 'Mobile Number 2 must be exactly 10 digits.' });
+    }
+    if (req.body.mobileNumber3 && !/^\d{10}$/.test(req.body.mobileNumber3)) {
+      return res.status(400).json({ success: false, message: 'Mobile Number 3 must be exactly 10 digits.' });
+    }
 
     // Check duplicate GR
     const existingGr = await req.models.Student.findOne({ grNumber });
@@ -544,7 +551,7 @@ exports.createStudent = async (req, res) => {
 // @access  Private
 exports.updateStudent = async (req, res) => {
   try {
-    const { grNumber, srNumber, aadhaarNumber, mobileNumber1 } = req.body;
+    const { grNumber, srNumber, aadhaarNumber, mobileNumber1, mobileNumber2, mobileNumber3 } = req.body;
     let student = await req.models.Student.findById(req.params.id);
 
     if (!student) {
@@ -558,6 +565,12 @@ exports.updateStudent = async (req, res) => {
     // Mobile Validation
     if (mobileNumber1 && !/^\d{10}$/.test(mobileNumber1)) {
       return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
+    }
+    if (mobileNumber2 && !/^\d{10}$/.test(mobileNumber2)) {
+      return res.status(400).json({ success: false, message: 'Mobile Number 2 must be exactly 10 digits.' });
+    }
+    if (mobileNumber3 && !/^\d{10}$/.test(mobileNumber3)) {
+      return res.status(400).json({ success: false, message: 'Mobile Number 3 must be exactly 10 digits.' });
     }
 
     // Check GR number conflict
@@ -928,6 +941,8 @@ exports.exportCSV = async (req, res) => {
       'Caste Category',
       'Aadhaar Number',
       'Mobile Number 1',
+      'Mobile Number 2',
+      'Mobile Number 3',
       'IFSC Code',
       'Bank Account Number',
       'Verification Status',
@@ -956,6 +971,8 @@ exports.exportCSV = async (req, res) => {
           `"${s.casteCategory || ''}"`,
           `"${s.aadhaarNumber || ''}"`,
           `"${s.mobileNumber1 || ''}"`,
+          `"${s.mobileNumber2 || ''}"`,
+          `"${s.mobileNumber3 || ''}"`,
           `"${s.ifscCode || ''}"`,
           `"${s.bankAccountNumber || ''}"`,
           `"${s.verificationStatus || 'Pending'}"`,
@@ -1008,6 +1025,7 @@ exports.exportExcel = async (req, res) => {
         'Aadhaar Number': s.aadhaarNumber || '',
         'Mobile Number 1': s.mobileNumber1 || '',
         'Mobile Number 2': s.mobileNumber2 || '',
+        'Mobile Number 3': s.mobileNumber3 || '',
         'IFSC Code': s.ifscCode || '',
         'Bank Account Number': s.bankAccountNumber || '',
         'Account Holder Name': s.accountHolderName || '',
@@ -1211,6 +1229,8 @@ exports.importStudents = async (req, res) => {
       mobile: 'mobileNumber1',
       mobilenumber2: 'mobileNumber2',
       mobile2: 'mobileNumber2',
+      mobilenumber3: 'mobileNumber3',
+      mobile3: 'mobileNumber3',
       class: 'class',
       division: 'division'
     };
@@ -1289,7 +1309,7 @@ exports.importStudents = async (req, res) => {
         // String conversion and float cleaning for numeric fields
         const stringFields = [
           'srNumber', 'grNumber', 'aadhaarNumber', 'bankAccountNumber', 
-          'mobileNumber1', 'mobileNumber2', 'motherAadhaarNumber', 'fatherAadhaarNumber',
+          'mobileNumber1', 'mobileNumber2', 'mobileNumber3', 'motherAadhaarNumber', 'fatherAadhaarNumber',
           'penNumber', 'apaarId', 'udiseNumber'
         ];
         for (const f of stringFields) {
