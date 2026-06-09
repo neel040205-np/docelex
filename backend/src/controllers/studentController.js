@@ -155,7 +155,7 @@ exports.downloadAllDocuments = async (req, res) => {
 
     for (const student of students) {
       const studentWithDocs = await attachDocumentsToStudent(student, req.models.Document);
-      const folderName = studentWithDocs.name.replace(/[^\w\s]/gi, '');
+      const folderName = studentWithDocs.grNumber || studentWithDocs.name.replace(/[^\w\s]/gi, '');
 
       for (const [key, doc] of Object.entries(studentWithDocs.documents || {})) {
         if (!doc?.url) continue;
@@ -216,17 +216,9 @@ exports.downloadStudentDocuments = async (req, res) => {
 
     const studentWithDocs = await attachDocumentsToStudent(student, req.models.Document);
     
-    // Fallback to name if firstName is not present (e.g. for legacy records)
-    let rawName = 'student';
-    if (studentWithDocs.firstName) {
-      rawName = studentWithDocs.firstName;
-    } else if (studentWithDocs.name) {
-      // For legacy records, take the first word of the full name
-      rawName = studentWithDocs.name.trim().split(/\s+/)[0];
-    }
-    
-    const safeName = rawName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase() || 'student';
-    const zipFileName = `${safeName}-docs.zip`;
+    const grName = studentWithDocs.grNumber || 'student';
+    const safeGr = grName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+    const zipFileName = `${safeGr}-docs.zip`;
     res.attachment(zipFileName);
 
     const archive = new ZipArchive({
@@ -241,7 +233,7 @@ exports.downloadStudentDocuments = async (req, res) => {
 
       try {
         const fileName = getDocumentFileName(doc);
-        const archivePath = `${safeName}-docs/${fileName}`;
+        const archivePath = `${safeGr}-docs/${fileName}`;
         
         if (!isCloudinaryConfigured() && doc.publicId && !doc.publicId.startsWith('drive-')) {
           // Local file - read directly from disk
@@ -281,7 +273,9 @@ exports.downloadStudentDocuments = async (req, res) => {
       const s = new Readable();
       s.push('No documents uploaded for this student yet.');
       s.push(null);
-      archive.append(s, { name: `${safeName}-docs/readme.txt` });
+      const grName = studentWithDocs.grNumber || 'student';
+      const safeGr = grName.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+      archive.append(s, { name: `${safeGr}-docs/readme.txt` });
     }
 
     await archive.finalize();
@@ -531,6 +525,16 @@ exports.createStudent = async (req, res) => {
       const messages = Object.values(error.errors).map((val) => val.message);
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0] || '';
+      let message = 'A student with this information already exists.';
+      if (field === 'grNumber') {
+        message = 'A student with this GR Number already exists.';
+      } else if (field === 'srNumber' || field.includes('srNumber')) {
+        message = 'A student with this SR Number already exists in this Class and Division.';
+      }
+      return res.status(400).json({ success: false, message });
+    }
     res.status(500).json({ success: false, message: 'Server error creating student' });
   }
 };
@@ -637,6 +641,16 @@ exports.updateStudent = async (req, res) => {
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map((val) => val.message);
       return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0] || '';
+      let message = 'A student with this information already exists.';
+      if (field === 'grNumber') {
+        message = 'A student with this GR Number already exists.';
+      } else if (field === 'srNumber' || field.includes('srNumber')) {
+        message = 'A student with this SR Number already exists in this Class and Division.';
+      }
+      return res.status(400).json({ success: false, message });
     }
     res.status(500).json({ success: false, message: 'Server error updating student' });
   }

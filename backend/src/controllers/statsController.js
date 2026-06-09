@@ -33,7 +33,7 @@ exports.getStats = async (req, res) => {
     const pendingStudents = await StudentModel.countDocuments({ verificationStatus: 'Pending' });
 
     // 3. Class Wise Statistics (Aggregation pipeline)
-    const classStats = await StudentModel.aggregate([
+    const classStatsAgg = await StudentModel.aggregate([
       {
         $group: {
           _id: '$class',
@@ -54,8 +54,31 @@ exports.getStats = async (req, res) => {
           _id: 0,
         },
       },
-      { $sort: { class: 1 } },
     ]);
+
+    const classesOrder = [
+      'Balvatika', 'Class 1', 'Class 2', 'Class 3', 'Class 4',
+      'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9',
+      'Class 10', 'Class 11', 'Class 12'
+    ];
+
+    const classStatsMap = {};
+    classStatsAgg.forEach((item) => {
+      classStatsMap[item.class] = item;
+    });
+
+    const classStats = classesOrder.map((className) => {
+      const stats = classStatsMap[className] || { total: 0, verified: 0, pending: 0, rejected: 0 };
+      return {
+        class: className,
+        total: stats.total,
+        verified: stats.verified,
+        pending: stats.pending,
+        rejected: stats.rejected,
+        complete: stats.verified,
+        missing: stats.total - stats.verified,
+      };
+    });
 
     // 4. Document-wise upload statistics breakdown
     const docStatsAgg = await DocumentModel.aggregate([

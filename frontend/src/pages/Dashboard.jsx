@@ -156,6 +156,82 @@ export const Dashboard = () => {
         </Col>
       </Row>
 
+      {/* Teacher Action required checklist card */}
+      {(metrics.missingDocsStudents > 0 || metrics.pendingStudents > 0 || metrics.rejectedStudents > 0) ? (
+        <Card
+          title={
+            <Space>
+              <FileExclamationOutlined style={{ color: '#ef4444' }} />
+              <span style={{ fontWeight: 700, letterSpacing: '-0.3px', color: '#b91c1c' }}>ACTION REQUIRED</span>
+            </Space>
+          }
+          bordered={false}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '12px',
+            boxShadow: 'var(--shadow-premium)',
+            borderLeft: '4px solid #ef4444',
+            background: '#fffafb',
+          }}
+        >
+          <Row gutter={[16, 16]}>
+            {metrics.missingDocsStudents > 0 && (
+              <Col xs={24} md={8}>
+                <Card type="inner" title={<span style={{ fontWeight: 600 }}>Finish Document Uploads</span>} style={{ borderRadius: '8px', height: '100%' }}>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    There are <strong>{metrics.missingDocsStudents}</strong> students with missing or unverified documents in their folders.
+                  </p>
+                  <Button 
+                    type="primary" 
+                    danger
+                    icon={<ArrowRightOutlined />} 
+                    onClick={() => navigate('/students?missingDocument=any')}
+                    style={{ borderRadius: '6px', width: '100%', marginTop: '8px' }}
+                  >
+                    Finish Uploading
+                  </Button>
+                </Card>
+              </Col>
+            )}
+            {metrics.rejectedStudents > 0 && (
+              <Col xs={24} md={8}>
+                <Card type="inner" title={<span style={{ fontWeight: 600 }}>Review Rejected Files</span>} style={{ borderRadius: '8px', height: '100%' }}>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    There are <strong>{metrics.rejectedStudents}</strong> student folders containing documents rejected during verification.
+                  </p>
+                  <Button 
+                    type="default" 
+                    danger
+                    icon={<ArrowRightOutlined />} 
+                    onClick={() => navigate('/students?verificationStatus=Rejected')}
+                    style={{ borderRadius: '6px', width: '100%', marginTop: '8px', border: '1px solid #ef4444', color: '#ef4444' }}
+                  >
+                    Review Remarks
+                  </Button>
+                </Card>
+              </Col>
+            )}
+            {metrics.pendingStudents > 0 && (
+              <Col xs={24} md={8}>
+                <Card type="inner" title={<span style={{ fontWeight: 600 }}>Verify Pending Folders</span>} style={{ borderRadius: '8px', height: '100%' }}>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    There are <strong>{metrics.pendingStudents}</strong> student folders pending approval and verification.
+                  </p>
+                  <Button 
+                    type="default" 
+                    icon={<ArrowRightOutlined />} 
+                    onClick={() => navigate('/students?verificationStatus=Pending')}
+                    style={{ borderRadius: '6px', width: '100%', marginTop: '8px' }}
+                  >
+                    Verify Folders
+                  </Button>
+                </Card>
+              </Col>
+            )}
+          </Row>
+        </Card>
+      ) : null}
+
       {/* Visual Analytics */}
       <Row gutter={[24, 24]}>
         {/* Class distribution chart */}
@@ -165,14 +241,20 @@ export const Dashboard = () => {
             bordered={false}
             style={{ boxShadow: 'var(--shadow-premium)', background: 'var(--bg-card)' }}
           >
-            <div style={{ height: '350px' }}>
+            <div style={{ height: '380px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={classStats}>
+                <BarChart data={classStats} margin={{ bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="class" tick={{ fontSize: isMobile ? 10 : 12 }} />
+                  <XAxis 
+                    dataKey="class" 
+                    tick={{ fontSize: isMobile ? 8 : 10 }} 
+                    interval={0} 
+                    angle={-45} 
+                    textAnchor="end" 
+                  />
                   <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
                   <Tooltip />
-                  <Legend />
+                  <Legend wrapperStyle={{ pt: 10 }} />
                   <Bar dataKey="complete" name={t('dashboard.completeDocuments')} fill="#10b981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="missing" name={t('dashboard.missingDocuments')} fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
