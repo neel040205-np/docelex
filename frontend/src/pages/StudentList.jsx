@@ -275,21 +275,9 @@ export const StudentList = () => {
       render: (_, record) => `${record.class} - ${record.division}`,
     },
     {
-      title: t('students.mobileNumber1', 'Mobile Number 1'),
+      title: 'Mobile',
       dataIndex: 'mobileNumber1',
-      key: 'mobileNumber1',
-    },
-    {
-      title: t('students.mobileNumber2', 'Mobile Number 2'),
-      dataIndex: 'mobileNumber2',
-      key: 'mobileNumber2',
-      render: (text) => text || '-',
-    },
-    {
-      title: 'Aadhaar Card',
-      dataIndex: 'aadhaarNumber',
-      key: 'aadhaarNumber',
-      render: (text) => text ? <span style={{ fontFamily: 'monospace' }}>{text}</span> : '-',
+      key: 'mobile',
     },
     {
       title: 'Verification Status',
@@ -628,25 +616,9 @@ export const StudentList = () => {
                         {student.verificationStatus || 'Pending'}
                       </Tag>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Mobile 1:</span>
-                      <span style={{ fontWeight: 500 }}>{student.mobileNumber1}</span>
-                    </div>
-                    {student.mobileNumber2 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Mobile 2:</span>
-                        <span style={{ fontWeight: 500 }}>{student.mobileNumber2}</span>
-                      </div>
-                    )}
-                    {student.mobileNumber3 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Mobile 3:</span>
-                        <span style={{ fontWeight: 500 }}>{student.mobileNumber3}</span>
-                      </div>
-                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Aadhaar:</span>
-                      <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{student.aadhaarNumber}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>Mobile:</span>
+                      <span style={{ fontWeight: 500 }}>{student.mobileNumber1}</span>
                     </div>
                   </div>
 

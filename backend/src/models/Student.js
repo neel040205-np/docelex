@@ -133,10 +133,6 @@ const StudentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    mobileNumber3: {
-      type: String,
-      trim: true,
-    },
 
     // Legacy and UI compatibility fields
     name: {
@@ -218,14 +214,13 @@ StudentSchema.pre('save', function (next) {
 // Compound unique index to ensure srNumber is unique within each class and division
 StudentSchema.index({ class: 1, division: 1, srNumber: 1 }, { unique: true });
 
+// Composite indices for performant search & filters
 StudentSchema.index({
   name: 'text',
   grNumber: 'text',
   srNumber: 'text',
   aadhaarNumber: 'text',
   mobileNumber1: 'text',
-  mobileNumber2: 'text',
-  mobileNumber3: 'text',
 });
 
 module.exports = mongoose.model('Student', StudentSchema);

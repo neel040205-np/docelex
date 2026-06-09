@@ -462,7 +462,7 @@ exports.getStudentById = async (req, res) => {
 // @access  Private
 exports.createStudent = async (req, res) => {
   try {
-    const { grNumber, srNumber, aadhaarNumber, mobileNumber1, mobileNumber2, mobileNumber3, class: className, division } = req.body;
+    const { grNumber, srNumber, aadhaarNumber, mobileNumber1, class: className, division } = req.body;
 
     // Aadhaar Validations
     if (!/^\d{12}$/.test(aadhaarNumber)) {
@@ -471,12 +471,6 @@ exports.createStudent = async (req, res) => {
     // Mobile Validation
     if (!/^\d{10}$/.test(mobileNumber1)) {
       return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
-    }
-    if (mobileNumber2 && !/^\d{10}$/.test(mobileNumber2)) {
-      return res.status(400).json({ success: false, message: 'Mobile Number 2 must be exactly 10 digits.' });
-    }
-    if (mobileNumber3 && !/^\d{10}$/.test(mobileNumber3)) {
-      return res.status(400).json({ success: false, message: 'Mobile Number 3 must be exactly 10 digits.' });
     }
 
     // Check duplicate GR
@@ -550,7 +544,7 @@ exports.createStudent = async (req, res) => {
 // @access  Private
 exports.updateStudent = async (req, res) => {
   try {
-    const { grNumber, srNumber, aadhaarNumber, mobileNumber1, mobileNumber2, mobileNumber3 } = req.body;
+    const { grNumber, srNumber, aadhaarNumber, mobileNumber1 } = req.body;
     let student = await req.models.Student.findById(req.params.id);
 
     if (!student) {
@@ -564,12 +558,6 @@ exports.updateStudent = async (req, res) => {
     // Mobile Validation
     if (mobileNumber1 && !/^\d{10}$/.test(mobileNumber1)) {
       return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
-    }
-    if (mobileNumber2 && !/^\d{10}$/.test(mobileNumber2)) {
-      return res.status(400).json({ success: false, message: 'Mobile Number 2 must be exactly 10 digits.' });
-    }
-    if (mobileNumber3 && !/^\d{10}$/.test(mobileNumber3)) {
-      return res.status(400).json({ success: false, message: 'Mobile Number 3 must be exactly 10 digits.' });
     }
 
     // Check GR number conflict
@@ -1223,8 +1211,6 @@ exports.importStudents = async (req, res) => {
       mobile: 'mobileNumber1',
       mobilenumber2: 'mobileNumber2',
       mobile2: 'mobileNumber2',
-      mobilenumber3: 'mobileNumber3',
-      mobile3: 'mobileNumber3',
       class: 'class',
       division: 'division'
     };
@@ -1303,7 +1289,7 @@ exports.importStudents = async (req, res) => {
         // String conversion and float cleaning for numeric fields
         const stringFields = [
           'srNumber', 'grNumber', 'aadhaarNumber', 'bankAccountNumber', 
-          'mobileNumber1', 'mobileNumber2', 'mobileNumber3', 'motherAadhaarNumber', 'fatherAadhaarNumber',
+          'mobileNumber1', 'mobileNumber2', 'motherAadhaarNumber', 'fatherAadhaarNumber',
           'penNumber', 'apaarId', 'udiseNumber'
         ];
         for (const f of stringFields) {
