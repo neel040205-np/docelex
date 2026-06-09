@@ -74,6 +74,11 @@ export const StudentList = () => {
   const [defaultDivision, setDefaultDivision] = useState('');
   const [defaultMobile, setDefaultMobile] = useState('');
 
+  // Delete PIN Authentication State
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [studentIdToDelete, setStudentIdToDelete] = useState(null);
+  const [deletePin, setDeletePin] = useState('');
+
   const handleImportSubmit = async () => {
     if (fileList.length === 0) {
       message.error(t('students.selectImportFile', 'Please select a file to import first.'));
@@ -188,13 +193,19 @@ export const StudentList = () => {
 
   // 2. Delete Student Mutation
   const deleteMutation = useMutation({
-    mutationFn: (id) => client.delete(`/students/${id}`),
+    mutationFn: ({ id, pin }) => client.delete(`/students/${id}?pin=${pin}`),
     onSuccess: () => {
       message.success(t('students.deletedSuccess', 'Student records deleted successfully.'));
       queryClient.invalidateQueries(['students']);
       queryClient.invalidateQueries(['stats']);
     },
   });
+
+  const showDeleteConfirm = (id) => {
+    setStudentIdToDelete(id);
+    setDeletePin('');
+    setDeleteModalVisible(true);
+  };
 
   const getUploadedCount = (student) => {
     if (!student?.documents) return 0;
@@ -344,17 +355,13 @@ export const StudentList = () => {
               onClick={() => navigate(`/students/${record._id}/verify`)}
             />
           </Tooltip>
-          <Popconfirm
-            title="Delete student records?"
-            description="This will permanently delete the student and all uploaded documents."
-            onConfirm={() => deleteMutation.mutate(record._id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Tooltip title="Delete Student Record">
-              <Button type="text" icon={<DeleteOutlined style={{ color: '#ef4444' }} />} />
-            </Tooltip>
-          </Popconfirm>
+          <Tooltip title="Delete Student Record">
+            <Button
+              type="text"
+              icon={<DeleteOutlined style={{ color: '#ef4444' }} />}
+              onClick={() => showDeleteConfirm(record._id)}
+            />
+          </Tooltip>
         </Space>
       ),
     },
@@ -676,19 +683,13 @@ export const StudentList = () => {
                         onClick={() => navigate(`/students/${student._id}/verify`)}
                         style={{ borderRadius: '6px' }}
                       />
-                      <Popconfirm
-                        title="Delete student?"
-                        onConfirm={() => deleteMutation.mutate(student._id)}
-                        okText="Yes"
-                        cancelText="No"
-                      >
-                        <Button
-                          danger
-                          size="middle"
-                          icon={<DeleteOutlined />}
-                          style={{ borderRadius: '6px' }}
-                        />
-                      </Popconfirm>
+                      <Button
+                        danger
+                        size="middle"
+                        icon={<DeleteOutlined />}
+                        onClick={() => showDeleteConfirm(student._id)}
+                        style={{ borderRadius: '6px' }}
+                      />
                     </Space>
                   </div>
                 </Card>
@@ -852,6 +853,47 @@ export const StudentList = () => {
                 <li><strong>Identifiers:</strong> "PEN Number", "APAAR ID", "UDISE Number"</li>
               </ul>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete authorization PIN Modal */}
+      <Modal
+        title="Authorize Student Deletion"
+        open={deleteModalVisible}
+        onCancel={() => setDeleteModalVisible(false)}
+        onOk={() => {
+          if (!deletePin || deletePin.length !== 4) {
+            message.error('Please enter a valid 4-digit PIN');
+            return;
+          }
+          deleteMutation.mutate(
+            { id: studentIdToDelete, pin: deletePin },
+            {
+              onSuccess: () => {
+                setDeleteModalVisible(false);
+              },
+            }
+          );
+        }}
+        okText="Confirm Delete"
+        cancelText="Cancel"
+        okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+        destroyOnClose
+      >
+        <div style={{ padding: '10px 0' }}>
+          <Paragraph>
+            Deleting a student folder is a permanent action. Please enter your <strong>4-digit Authorization PIN</strong> to confirm.
+          </Paragraph>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 15 }}>
+            <Input.Password
+              placeholder="Enter 4-digit PIN"
+              value={deletePin}
+              onChange={(e) => setDeletePin(e.target.value.replace(/\D/g, '').substring(0, 4))}
+              maxLength={4}
+              style={{ width: 180, textAlign: 'center', fontSize: 18, letterSpacing: 4 }}
+              autoFocus
+            />
           </div>
         </div>
       </Modal>

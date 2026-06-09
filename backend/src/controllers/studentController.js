@@ -674,6 +674,16 @@ exports.updateStudent = async (req, res) => {
 // @access  Private (Admin Only)
 exports.deleteStudent = async (req, res) => {
   try {
+    const { pin } = req.query;
+    if (!pin) {
+      return res.status(400).json({ success: false, message: 'Delete authorization PIN is required' });
+    }
+
+    const userPin = req.user.deletePin || '1234';
+    if (pin !== userPin) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Invalid Delete PIN' });
+    }
+
     const student = await req.models.Student.findById(req.params.id);
 
     if (!student) {
@@ -701,7 +711,7 @@ exports.deleteStudent = async (req, res) => {
       performedBy: req.user._id,
       studentName: student.name,
       details: `Deleted student ${student.name} (GR No: ${student.grNumber}, SR No: ${student.srNumber}) and all documents`,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      ipAddress: req.ip || (req.headers && req.headers['x-forwarded-for']) || '127.0.0.1',
     });
 
     res.status(200).json({

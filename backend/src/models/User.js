@@ -27,6 +27,11 @@ const UserSchema = new mongoose.Schema(
       enum: ['teacher'],
       default: 'teacher',
     },
+    deletePin: {
+      type: String,
+      required: [true, 'Please provide a 4-digit PIN for entry deletion'],
+      default: '1234',
+    },
   },
   {
     timestamps: true,
