@@ -38,21 +38,6 @@ export const StudentRegister = () => {
   const selectedClass = Form.useWatch('class', form);
   const selectedDivision = Form.useWatch('division', form);
 
-  useEffect(() => {
-    const fetchNextSr = async () => {
-      if (!selectedClass || !selectedDivision) return;
-      try {
-        const res = await client.get(`/students/next-sr?class=${encodeURIComponent(selectedClass)}&division=${encodeURIComponent(selectedDivision)}`);
-        if (res.success && res.nextSrNumber) {
-          form.setFieldsValue({ srNumber: res.nextSrNumber });
-        }
-      } catch (err) {
-        console.error('Error fetching next SR number:', err);
-      }
-    };
-    fetchNextSr();
-  }, [selectedClass, selectedDivision, form]);
-
   // Revalidate srNumber when class or division changes so duplicate check updates
   useEffect(() => {
     if (form.getFieldValue('srNumber')) {
@@ -167,9 +152,8 @@ export const StudentRegister = () => {
               <Col xs={24} md={8}>
                 <Form.Item
                   name="srNumber"
-                  label="SR Number (Unique in Class/Div)"
+                  label="SR Number (Auto-assigned if left blank)"
                   rules={[
-                    { required: true, message: 'SR Number is required' },
                     { validator: checkDuplicateSR }
                   ]}
                   validateTrigger="onBlur"

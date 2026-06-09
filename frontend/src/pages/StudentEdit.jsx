@@ -194,9 +194,8 @@ export const StudentEdit = () => {
               <Col xs={24} md={8}>
                 <Form.Item
                   name="srNumber"
-                  label="SR Number (Unique in Class/Div)"
+                  label="SR Number (Auto-assigned if left blank)"
                   rules={[
-                    { required: true, message: 'SR Number is required' },
                     { validator: checkDuplicateSR }
                   ]}
                   validateTrigger="onBlur"

@@ -93,6 +93,31 @@ const getDocumentFileName = (doc) => {
   return `${formattedType}${ext}`;
 };
 
+// Helper to compute the next serial number scoped to class and division
+const getNextSrNumberHelper = async (StudentModel, className, division) => {
+  const students = await StudentModel.find({ class: className, division }, { srNumber: 1 });
+  let maxSr = 0;
+  let prefix = '';
+  
+  students.forEach((s) => {
+    if (s.srNumber) {
+      const match = s.srNumber.match(/\d+/);
+      if (match) {
+        const val = parseInt(match[0], 10);
+        if (val > maxSr) {
+          maxSr = val;
+          const index = s.srNumber.indexOf(match[0]);
+          prefix = s.srNumber.substring(0, index);
+        }
+      }
+    }
+  });
+  
+  const count = students.length;
+  const nextSr = Math.max(count + 1, maxSr + 1);
+  return `${prefix}${nextSr}`;
+};
+
 // @desc    Get the next serial number (srNumber) based on student count & max SR number (scoped to class and division)
 // @route   GET /api/students/next-sr
 // @access  Private
@@ -103,24 +128,10 @@ exports.getNextSrNumber = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Class and Division are required query parameters to compute the next SR Number' });
     }
 
-    const students = await req.models.Student.find({ class: className, division }, { srNumber: 1 });
-    let maxSr = 0;
-    students.forEach((s) => {
-      if (s.srNumber) {
-        const match = s.srNumber.match(/\d+/);
-        if (match) {
-          const val = parseInt(match[0], 10);
-          if (val > maxSr) {
-            maxSr = val;
-          }
-        }
-      }
-    });
-    const count = students.length;
-    const nextSr = Math.max(count + 1, maxSr + 1);
+    const nextSr = await getNextSrNumberHelper(req.models.Student, className, division);
     res.status(200).json({
       success: true,
-      nextSrNumber: String(nextSr),
+      nextSrNumber: nextSr,
     });
   } catch (error) {
     console.error('Error getting next SR number:', error);
@@ -477,13 +488,20 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    // Check duplicate SR (scoped to class and division)
-    const existingSr = await req.models.Student.findOne({ srNumber, class: className, division });
-    if (existingSr) {
-      return res.status(400).json({
-        success: false,
-        message: `A student with SR Number '${srNumber}' already exists in Class '${className}' Division '${division}'.`,
-      });
+    // Auto-generate srNumber if not provided
+    let finalSrNumber = srNumber;
+    if (!finalSrNumber || String(finalSrNumber).trim() === '') {
+      finalSrNumber = await getNextSrNumberHelper(req.models.Student, className, division);
+      req.body.srNumber = finalSrNumber;
+    } else {
+      // Check duplicate SR (scoped to class and division)
+      const existingSr = await req.models.Student.findOne({ srNumber: finalSrNumber, class: className, division });
+      if (existingSr) {
+        return res.status(400).json({
+          success: false,
+          message: `A student with SR Number '${finalSrNumber}' already exists in Class '${className}' Division '${division}'.`,
+        });
+      }
     }
 
     // Attach auditing info
@@ -550,9 +568,14 @@ exports.updateStudent = async (req, res) => {
     }
 
     // Check SR number conflict (scoped to class and division)
-    if (srNumber && (srNumber !== student.srNumber || req.body.class !== student.class || req.body.division !== student.division)) {
-      const targetClass = req.body.class || student.class;
-      const targetDivision = req.body.division || student.division;
+    const targetClass = req.body.class || student.class;
+    const targetDivision = req.body.division || student.division;
+
+    if (req.body.hasOwnProperty('srNumber') && (req.body.srNumber === '' || req.body.srNumber === null)) {
+      // If SR number is explicitly cleared, auto-generate it
+      const autoSr = await getNextSrNumberHelper(req.models.Student, targetClass, targetDivision);
+      req.body.srNumber = autoSr;
+    } else if (srNumber && (srNumber !== student.srNumber || req.body.class !== student.class || req.body.division !== student.division)) {
       const srConflict = await req.models.Student.findOne({
         srNumber,
         class: targetClass,
@@ -587,11 +610,12 @@ exports.updateStudent = async (req, res) => {
 
     req.body.updatedBy = req.user._id;
 
-    // Update
-    student = await req.models.Student.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
+    // Update fields manually on the mongoose document and save to trigger pre-validate/pre-save hooks
+    Object.keys(req.body).forEach((key) => {
+      student[key] = req.body[key];
     });
+
+    await student.save();
 
     if (changes.length > 0) {
       await req.models.AuditLog.create({
@@ -1326,9 +1350,9 @@ exports.importStudents = async (req, res) => {
           await existingStudent.save();
           updatedCount++;
         } else {
-          // Validate required fields for creation
+          // Validate required fields for creation (srNumber is optional, it can be auto-assigned)
           const requiredFields = [
-            'srNumber', 'grNumber', 'surname', 'firstName', 'fatherName', 'motherName',
+            'grNumber', 'surname', 'firstName', 'fatherName', 'motherName',
             'gender', 'dob', 'admissionDate', 'caste', 'casteCategory', 'aadhaarNumber',
             'nameAsPerAadhaar', 'dobAsPerAadhaar', 'bankAccountNumber', 'ifscCode',
             'accountHolderName', 'mobileNumber1', 'class', 'division'
@@ -1341,6 +1365,10 @@ exports.importStudents = async (req, res) => {
           data.createdBy = req.user._id;
           data.updatedBy = req.user._id;
           data.verificationStatus = 'Pending';
+          
+          if (!data.srNumber || String(data.srNumber).trim() === '') {
+            data.srNumber = await getNextSrNumberHelper(req.models.Student, data.class, data.division);
+          }
 
           const newStudent = new req.models.Student(data);
           await newStudent.save();

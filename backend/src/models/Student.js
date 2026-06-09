@@ -172,6 +172,39 @@ const StudentSchema = new mongoose.Schema(
   }
 );
 
+// Pre-validate hook to auto-assign the next serial number scoped to class & division if blank
+StudentSchema.pre('validate', async function (next) {
+  if (!this.srNumber || String(this.srNumber).trim() === '') {
+    try {
+      const StudentModel = this.constructor;
+      const students = await StudentModel.find({ class: this.class, division: this.division }, { srNumber: 1 });
+      let maxSr = 0;
+      let prefix = '';
+      
+      students.forEach((s) => {
+        if (s.srNumber) {
+          const match = s.srNumber.match(/\d+/);
+          if (match) {
+            const val = parseInt(match[0], 10);
+            if (val > maxSr) {
+              maxSr = val;
+              const index = s.srNumber.indexOf(match[0]);
+              prefix = s.srNumber.substring(0, index);
+            }
+          }
+        }
+      });
+      
+      const count = students.length;
+      const nextSr = Math.max(count + 1, maxSr + 1);
+      this.srNumber = `${prefix}${nextSr}`;
+    } catch (err) {
+      return next(err);
+    }
+  }
+  next();
+});
+
 // Pre-save hook to auto-populate the 'name' field for search capability
 StudentSchema.pre('save', function (next) {
   this.name = `${this.surname} ${this.firstName} ${this.fatherName}`.trim();
