@@ -101,12 +101,38 @@ export const StudentEdit = () => {
     }
   };
 
+  const selectedClass = Form.useWatch('class', form);
+  const selectedDivision = Form.useWatch('division', form);
+
+  // Revalidate srNumber when class or division changes so duplicate check updates
+  useEffect(() => {
+    if (form.getFieldValue('srNumber')) {
+      form.validateFields(['srNumber']).catch(() => {});
+    }
+  }, [selectedClass, selectedDivision, form]);
+
   const checkDuplicateSR = async (rule, value) => {
-    if (!value || value === student?.srNumber) return Promise.resolve();
+    if (!value) return Promise.resolve();
+    const className = form.getFieldValue('class');
+    const division = form.getFieldValue('division');
+    
+    // If the SR number, Class, and Division are all unchanged, it is not a duplicate.
+    if (
+      value === student?.srNumber &&
+      className === student?.class &&
+      division === student?.division
+    ) {
+      return Promise.resolve();
+    }
+    
+    if (!className || !division) {
+      return Promise.resolve();
+    }
+    
     try {
-      const res = await client.get(`/students/check-duplicate?field=srNumber&value=${value}&excludeId=${id}`);
+      const res = await client.get(`/students/check-duplicate?field=srNumber&value=${value}&class=${encodeURIComponent(className)}&division=${encodeURIComponent(division)}&excludeId=${id}`);
       if (res.exists) {
-        return Promise.reject(new Error('This SR Number is already registered!'));
+        return Promise.reject(new Error('This SR Number is already registered for this Class and Division!'));
       }
       return Promise.resolve();
     } catch (err) {
@@ -168,7 +194,7 @@ export const StudentEdit = () => {
               <Col xs={24} md={8}>
                 <Form.Item
                   name="srNumber"
-                  label="SR Number (Unique)"
+                  label="SR Number (Unique in Class/Div)"
                   rules={[
                     { required: true, message: 'SR Number is required' },
                     { validator: checkDuplicateSR }

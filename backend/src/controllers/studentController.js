@@ -93,12 +93,17 @@ const getDocumentFileName = (doc) => {
   return `${formattedType}${ext}`;
 };
 
-// @desc    Get the next serial number (srNumber) based on student count & max SR number
+// @desc    Get the next serial number (srNumber) based on student count & max SR number (scoped to class and division)
 // @route   GET /api/students/next-sr
 // @access  Private
 exports.getNextSrNumber = async (req, res) => {
   try {
-    const students = await req.models.Student.find({}, { srNumber: 1 });
+    const { class: className, division } = req.query;
+    if (!className || !division) {
+      return res.status(400).json({ success: false, message: 'Class and Division are required query parameters to compute the next SR Number' });
+    }
+
+    const students = await req.models.Student.find({ class: className, division }, { srNumber: 1 });
     let maxSr = 0;
     students.forEach((s) => {
       if (s.srNumber) {
@@ -282,7 +287,7 @@ exports.downloadStudentDocuments = async (req, res) => {
 // @access  Private
 exports.checkDuplicate = async (req, res) => {
   try {
-    const { field, value, excludeId } = req.query;
+    const { field, value, excludeId, class: className, division } = req.query;
     if (!['grNumber', 'srNumber'].includes(field)) {
       return res.status(400).json({ success: false, message: 'Invalid duplicate check field' });
     }
@@ -290,6 +295,14 @@ exports.checkDuplicate = async (req, res) => {
     const query = { [field]: value };
     if (excludeId) {
       query._id = { $ne: excludeId };
+    }
+
+    if (field === 'srNumber') {
+      if (!className || !division) {
+        return res.status(400).json({ success: false, message: 'Class and Division are required for SR Number duplicate check' });
+      }
+      query.class = className;
+      query.division = division;
     }
 
     const count = await req.models.Student.countDocuments(query);
@@ -444,7 +457,7 @@ exports.getStudentById = async (req, res) => {
 // @access  Private
 exports.createStudent = async (req, res) => {
   try {
-    const { grNumber, srNumber, aadhaarNumber, mobileNumber1 } = req.body;
+    const { grNumber, srNumber, aadhaarNumber, mobileNumber1, class: className, division } = req.body;
 
     // Aadhaar Validations
     if (!/^\d{12}$/.test(aadhaarNumber)) {
@@ -464,12 +477,12 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    // Check duplicate SR
-    const existingSr = await req.models.Student.findOne({ srNumber });
+    // Check duplicate SR (scoped to class and division)
+    const existingSr = await req.models.Student.findOne({ srNumber, class: className, division });
     if (existingSr) {
       return res.status(400).json({
         success: false,
-        message: `A student with SR Number '${srNumber}' already exists.`,
+        message: `A student with SR Number '${srNumber}' already exists in Class '${className}' Division '${division}'.`,
       });
     }
 
@@ -536,13 +549,20 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
-    // Check SR number conflict
-    if (srNumber && srNumber !== student.srNumber) {
-      const srConflict = await req.models.Student.findOne({ srNumber });
+    // Check SR number conflict (scoped to class and division)
+    if (srNumber && (srNumber !== student.srNumber || req.body.class !== student.class || req.body.division !== student.division)) {
+      const targetClass = req.body.class || student.class;
+      const targetDivision = req.body.division || student.division;
+      const srConflict = await req.models.Student.findOne({
+        srNumber,
+        class: targetClass,
+        division: targetDivision,
+        _id: { $ne: student._id }
+      });
       if (srConflict) {
         return res.status(400).json({
           success: false,
-          message: `SR Number '${srNumber}' is already allocated to another student`,
+          message: `SR Number '${srNumber}' is already allocated to another student in Class '${targetClass}' Division '${targetDivision}'`,
         });
       }
     }
@@ -1243,13 +1263,17 @@ exports.importStudents = async (req, res) => {
           }
         }
 
-        // Required Check: Must have either srNumber or grNumber to match/identify
+        // Required Check: Must have either grNumber or srNumber (scoped to class and division) to match/identify
         const matchCriteria = [];
-        if (data.srNumber) matchCriteria.push({ srNumber: data.srNumber });
-        if (data.grNumber) matchCriteria.push({ grNumber: data.grNumber });
+        if (data.grNumber) {
+          matchCriteria.push({ grNumber: data.grNumber });
+        }
+        if (data.srNumber && data.class && data.division) {
+          matchCriteria.push({ srNumber: data.srNumber, class: data.class, division: data.division });
+        }
 
         if (matchCriteria.length === 0) {
-          throw new Error('Missing SR/GR');
+          throw new Error('Missing unique identifiers (GR Number or SR Number with Class and Division)');
         }
 
         // Value Normalization

@@ -6,7 +6,6 @@ const StudentSchema = new mongoose.Schema(
     srNumber: {
       type: String,
       required: [true, 'SR Number is required'],
-      unique: true,
       trim: true,
     },
     grNumber: {
@@ -178,6 +177,9 @@ StudentSchema.pre('save', function (next) {
   this.name = `${this.surname} ${this.firstName} ${this.fatherName}`.trim();
   next();
 });
+
+// Compound unique index to ensure srNumber is unique within each class and division
+StudentSchema.index({ class: 1, division: 1, srNumber: 1 }, { unique: true });
 
 // Composite indices for performant search & filters
 StudentSchema.index({

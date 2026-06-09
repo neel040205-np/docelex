@@ -374,8 +374,8 @@ const seedData = async () => {
     for (const student of studentsData) {
       const existingStudent = await StudentModel.findOne({
         $or: [
-          { srNumber: student.srNumber },
-          { grNumber: student.grNumber }
+          { grNumber: student.grNumber },
+          { srNumber: student.srNumber, class: student.class, division: student.division }
         ]
       });
 

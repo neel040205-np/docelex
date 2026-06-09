@@ -35,10 +35,14 @@ export const StudentRegister = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
+  const selectedClass = Form.useWatch('class', form);
+  const selectedDivision = Form.useWatch('division', form);
+
   useEffect(() => {
     const fetchNextSr = async () => {
+      if (!selectedClass || !selectedDivision) return;
       try {
-        const res = await client.get('/students/next-sr');
+        const res = await client.get(`/students/next-sr?class=${encodeURIComponent(selectedClass)}&division=${encodeURIComponent(selectedDivision)}`);
         if (res.success && res.nextSrNumber) {
           form.setFieldsValue({ srNumber: res.nextSrNumber });
         }
@@ -47,7 +51,14 @@ export const StudentRegister = () => {
       }
     };
     fetchNextSr();
-  }, [form]);
+  }, [selectedClass, selectedDivision, form]);
+
+  // Revalidate srNumber when class or division changes so duplicate check updates
+  useEffect(() => {
+    if (form.getFieldValue('srNumber')) {
+      form.validateFields(['srNumber']).catch(() => {});
+    }
+  }, [selectedClass, selectedDivision, form]);
 
   // 1. Create Student Mutation
   const createMutation = useMutation({
@@ -94,10 +105,15 @@ export const StudentRegister = () => {
 
   const checkDuplicateSR = async (rule, value) => {
     if (!value) return Promise.resolve();
+    const className = form.getFieldValue('class');
+    const division = form.getFieldValue('division');
+    if (!className || !division) {
+      return Promise.resolve();
+    }
     try {
-      const res = await client.get(`/students/check-duplicate?field=srNumber&value=${value}`);
+      const res = await client.get(`/students/check-duplicate?field=srNumber&value=${value}&class=${encodeURIComponent(className)}&division=${encodeURIComponent(division)}`);
       if (res.exists) {
-        return Promise.reject(new Error('This SR Number is already registered!'));
+        return Promise.reject(new Error('This SR Number is already registered for this Class and Division!'));
       }
       return Promise.resolve();
     } catch (err) {
@@ -151,7 +167,7 @@ export const StudentRegister = () => {
               <Col xs={24} md={8}>
                 <Form.Item
                   name="srNumber"
-                  label="SR Number (Unique)"
+                  label="SR Number (Unique in Class/Div)"
                   rules={[
                     { required: true, message: 'SR Number is required' },
                     { validator: checkDuplicateSR }
