@@ -470,7 +470,7 @@ exports.createStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Aadhaar Number must be exactly 12 digits.' });
     }
     // Mobile Validation
-    if (!/^\d{10}$/.test(mobileNumber1)) {
+    if (mobileNumber1 && !/^\d{10}$/.test(mobileNumber1)) {
       return res.status(400).json({ success: false, message: 'Mobile Number 1 must be exactly 10 digits.' });
     }
     if (req.body.mobileNumber2 && !/^\d{10}$/.test(req.body.mobileNumber2)) {
@@ -519,7 +519,7 @@ exports.createStudent = async (req, res) => {
       studentId: student._id,
       studentName: student.name,
       details: `Registered student ${student.name} with GR No: ${student.grNumber}, SR No: ${student.srNumber}`,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      ipAddress: req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1',
     });
 
     res.status(201).json({
@@ -641,7 +641,7 @@ exports.updateStudent = async (req, res) => {
         studentId: student._id,
         studentName: student.name,
         details: `Updated fields for student ${student.name}: ${changes.join(', ')}`,
-        ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+        ipAddress: req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1',
       });
     }
 
@@ -794,7 +794,7 @@ exports.uploadDocument = async (req, res) => {
       studentId: student._id,
       studentName: student.name,
       details: `Uploaded ${documentType} for student ${student.name} (${originalName})`,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      ipAddress: req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1',
     });
 
     const updatedStudent = await req.models.Student.findById(id);
@@ -860,7 +860,7 @@ exports.deleteDocument = async (req, res) => {
       studentId: student._id,
       studentName: student.name,
       details: `Deleted ${documentType} (${doc.fileName}) for student ${student.name}`,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      ipAddress: req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1',
     });
 
     const result = await attachDocumentsToStudent(student, req.models.Document);
@@ -919,7 +919,7 @@ exports.verifyDocument = async (req, res) => {
       performedBy: req.user._id,
       studentId: id,
       details: `Document ${documentType} marked as ${status}. Remarks: "${remarks || ''}"`,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      ipAddress: req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1',
     });
 
     res.status(200).json({
@@ -1399,7 +1399,7 @@ exports.importStudents = async (req, res) => {
             'grNumber', 'surname', 'firstName', 'fatherName', 'motherName',
             'gender', 'dob', 'admissionDate', 'caste', 'casteCategory', 'aadhaarNumber',
             'nameAsPerAadhaar', 'dobAsPerAadhaar', 'bankAccountNumber', 'ifscCode',
-            'accountHolderName', 'mobileNumber1', 'class', 'division'
+            'accountHolderName', 'class', 'division'
           ];
           const missingFields = requiredFields.filter(f => !data[f] || String(data[f]).trim() === '');
           if (missingFields.length > 0) {
@@ -1435,7 +1435,7 @@ exports.importStudents = async (req, res) => {
       action: 'IMPORT_STUDENTS',
       performedBy: req.user._id,
       details: `Spreadsheet Import summary: Registered: ${createdCount}, Updated: ${updatedCount}, Failed: ${failedCount}`,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      ipAddress: req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1',
     });
 
     res.status(200).json({

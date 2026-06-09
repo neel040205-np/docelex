@@ -520,7 +520,6 @@ export const StudentEdit = () => {
                   name="mobileNumber1"
                   label="Mobile Number 1"
                   rules={[
-                    { required: true, message: 'Primary mobile number is required' },
                     { pattern: /^\d{10}$/, message: 'Must be exactly 10 digits.' }
                   ]}
                 >

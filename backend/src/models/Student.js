@@ -126,7 +126,6 @@ const StudentSchema = new mongoose.Schema(
     },
     mobileNumber1: {
       type: String,
-      required: [true, 'Mobile Number 1 is required'],
       trim: true,
     },
     mobileNumber2: {
