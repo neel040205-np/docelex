@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const axios = require('axios');
 
 const StudentSchema = new mongoose.Schema(
   {
@@ -208,9 +209,57 @@ StudentSchema.pre('validate', async function (next) {
   next();
 });
 
-// Pre-save hook to auto-populate the 'name' field for search capability
-StudentSchema.pre('save', function (next) {
-  this.name = `${this.surname} ${this.firstName} ${this.fatherName}`.trim();
+// Translation helper for Gujarati to English names
+const translateGujaratiToEnglish = async (text) => {
+  if (!text) return '';
+  const trimmed = String(text).trim();
+  if (!trimmed) return '';
+  // If the text contains only ASCII/English characters, skip translation
+  if (/^[\u0000-\u007F]*$/.test(trimmed)) {
+    return trimmed;
+  }
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=gu&tl=en&dt=t&q=${encodeURIComponent(trimmed)}`;
+    const response = await axios.get(url, { timeout: 3000 });
+    if (response.data && response.data[0] && response.data[0][0] && response.data[0][0][0]) {
+      let translated = response.data[0][0][0].trim();
+      // Apply custom overrides/transliterations
+      translated = translated.replace(/neil/gi, (match) => {
+        if (match === 'Neil') return 'Neel';
+        if (match === 'neil') return 'neel';
+        if (match === 'NEIL') return 'NEEL';
+        return 'Neel';
+      });
+      translated = translated.replace(/alca/gi, (match) => {
+        if (match === 'Alca') return 'Alka';
+        if (match === 'alca') return 'alka';
+        if (match === 'ALCA') return 'ALKA';
+        return 'Alka';
+      });
+      return translated;
+    }
+  } catch (error) {
+    console.error(`Error translating "${trimmed}" from Gujarati to English:`, error.message);
+  }
+  return trimmed;
+};
+
+// Pre-save hook to auto-populate the 'name' field and translate Gujarati names to English
+StudentSchema.pre('save', async function (next) {
+  try {
+    // Translate name fields if entered in Gujarati
+    if (this.surname) this.surname = await translateGujaratiToEnglish(this.surname);
+    if (this.firstName) this.firstName = await translateGujaratiToEnglish(this.firstName);
+    if (this.fatherName) this.fatherName = await translateGujaratiToEnglish(this.fatherName);
+    if (this.grandFatherName) this.grandFatherName = await translateGujaratiToEnglish(this.grandFatherName);
+    if (this.motherName) this.motherName = await translateGujaratiToEnglish(this.motherName);
+    if (this.nameAsPerAadhaar) this.nameAsPerAadhaar = await translateGujaratiToEnglish(this.nameAsPerAadhaar);
+    if (this.accountHolderName) this.accountHolderName = await translateGujaratiToEnglish(this.accountHolderName);
+
+    this.name = `${this.surname || ''} ${this.firstName || ''} ${this.fatherName || ''}`.trim().replace(/\s+/g, ' ').toUpperCase();
+  } catch (err) {
+    console.error('Error during pre-save translations:', err);
+  }
   next();
 });
 
