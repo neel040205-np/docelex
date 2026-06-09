@@ -526,11 +526,11 @@ exports.createStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
     if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0] || '';
+      const keys = Object.keys(error.keyPattern || {});
       let message = 'A student with this information already exists.';
-      if (field === 'grNumber') {
+      if (keys.includes('grNumber')) {
         message = 'A student with this GR Number already exists.';
-      } else if (field === 'srNumber' || field.includes('srNumber')) {
+      } else if (keys.includes('srNumber')) {
         message = 'A student with this SR Number already exists in this Class and Division.';
       }
       return res.status(400).json({ success: false, message });
@@ -643,11 +643,11 @@ exports.updateStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
     if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0] || '';
+      const keys = Object.keys(error.keyPattern || {});
       let message = 'A student with this information already exists.';
-      if (field === 'grNumber') {
+      if (keys.includes('grNumber')) {
         message = 'A student with this GR Number already exists.';
-      } else if (field === 'srNumber' || field.includes('srNumber')) {
+      } else if (keys.includes('srNumber')) {
         message = 'A student with this SR Number already exists in this Class and Division.';
       }
       return res.status(400).json({ success: false, message });
