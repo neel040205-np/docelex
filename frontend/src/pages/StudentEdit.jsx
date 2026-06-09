@@ -541,12 +541,12 @@ export const StudentEdit = () => {
               <Col xs={24} md={8}>
                 <Form.Item
                   name="mobileNumber3"
-                  label="Mobile Number 3"
+                  label="Class Teacher's Mobile Number"
                   rules={[
                     { pattern: /^\d{10}$/, message: 'Must be exactly 10 digits.' }
                   ]}
                 >
-                  <Input placeholder="Mobile Number 3" maxLength={10} />
+                  <Input placeholder="Class Teacher's Mobile" maxLength={10} />
                 </Form.Item>
               </Col>
             </Row>

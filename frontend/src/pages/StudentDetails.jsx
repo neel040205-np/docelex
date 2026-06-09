@@ -504,7 +504,7 @@ export const StudentDetails = () => {
                 <Descriptions.Item label="Father Aadhaar">{student.fatherAadhaarNumber || '-'}</Descriptions.Item>
                 <Descriptions.Item label="Primary Mobile">{student.mobileNumber1}</Descriptions.Item>
                 <Descriptions.Item label="Alternative Mobile">{student.mobileNumber2 || '-'}</Descriptions.Item>
-                <Descriptions.Item label="Mobile Number 3">{student.mobileNumber3 || '-'}</Descriptions.Item>
+                <Descriptions.Item label="Class Teacher's Mobile Number">{student.mobileNumber3 || '-'}</Descriptions.Item>
               </Descriptions>
             </Card>
           </Space>

@@ -275,20 +275,17 @@ export const StudentList = () => {
       render: (_, record) => `${record.class} - ${record.division}`,
     },
     {
-      title: 'Mobile / Aadhaar',
-      key: 'mobileAadhaar',
-      render: (_, record) => (
-        <div>
-          <div>
-            <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>M: </span>
-            <span>{record.mobileNumber1}</span>
-          </div>
-          <div style={{ marginTop: 2 }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>A: </span>
-            <span style={{ fontFamily: 'monospace' }}>{record.aadhaarNumber || '-'}</span>
-          </div>
-        </div>
-      ),
+      title: 'Mobile Number',
+      dataIndex: 'mobileNumber1',
+      key: 'mobile',
+      width: '130px',
+    },
+    {
+      title: 'Aadhaar Number',
+      dataIndex: 'aadhaarNumber',
+      key: 'aadhaar',
+      width: '140px',
+      render: (text) => <span style={{ fontFamily: 'monospace' }}>{text || '-'}</span>,
     },
     {
       title: 'Verification Status',
@@ -748,7 +745,7 @@ export const StudentList = () => {
           <div style={{ marginBottom: '16px', padding: '16px', background: isDarkMode ? '#1f1f1f' : '#fafafa', borderRadius: '8px', border: '1px solid var(--border-color, #d9d9d9)' }}>
             <Title level={5} style={{ marginTop: 0, marginBottom: '12px', fontSize: '13px' }}>Fallback Import Fields (Defaults)</Title>
             <Paragraph style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-              If your spreadsheet is missing columns for <strong>Class</strong>, <strong>Division</strong>, or <strong>Mobile Number</strong>, select fallbacks here. They will be applied to newly registered students.
+              If your spreadsheet is missing columns for <strong>Class</strong> or <strong>Division</strong>, select fallbacks here. You can also specify a default <strong>Class Teacher's Mobile Number</strong> to be added to imported student profiles.
             </Paragraph>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1.5fr', gap: '12px' }}>
               <div>
@@ -776,9 +773,9 @@ export const StudentList = () => {
                 </Select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-secondary)' }}>Mobile Number 1</label>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-secondary)' }}>Class Teacher's Mobile Number</label>
                 <Input
-                  placeholder="E.g. 9876543210"
+                  placeholder="Teacher's Mobile Number"
                   value={defaultMobile}
                   onChange={(e) => setDefaultMobile(e.target.value)}
                   maxLength={10}

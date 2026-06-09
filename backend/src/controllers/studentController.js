@@ -1302,8 +1302,8 @@ exports.importStudents = async (req, res) => {
         if ((data.division === undefined || data.division === null || String(data.division).trim() === '') && defaultDivision) {
           data.division = defaultDivision;
         }
-        if ((data.mobileNumber1 === undefined || data.mobileNumber1 === null || String(data.mobileNumber1).trim() === '') && defaultMobile) {
-          data.mobileNumber1 = defaultMobile;
+        if ((data.mobileNumber3 === undefined || data.mobileNumber3 === null || String(data.mobileNumber3).trim() === '') && defaultMobile) {
+          data.mobileNumber3 = defaultMobile;
         }
 
         // String conversion and float cleaning for numeric fields
