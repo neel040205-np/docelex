@@ -515,10 +515,10 @@ export const StudentEdit = () => {
             </Row>
 
             <Row gutter={16}>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item
                   name="mobileNumber1"
-                  label="Mobile Number 1"
+                  label={t('students.mobileNumber1', 'Mobile Number 1')}
                   rules={[
                     { required: true, message: 'Primary mobile number is required' },
                     { pattern: /^\d{10}$/, message: 'Must be exactly 10 digits.' }
@@ -527,15 +527,26 @@ export const StudentEdit = () => {
                   <Input placeholder="Primary Mobile Contact" maxLength={10} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item
                   name="mobileNumber2"
-                  label="Mobile Number 2"
+                  label={t('students.mobileNumber2', 'Mobile Number 2')}
                   rules={[
                     { pattern: /^\d{10}$/, message: 'Must be exactly 10 digits.' }
                   ]}
                 >
-                  <Input placeholder="Alternative Contact" maxLength={10} />
+                  <Input placeholder="Alternative Contact 1" maxLength={10} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="mobileNumber3"
+                  label={t('students.mobileNumber3', 'Mobile Number 3')}
+                  rules={[
+                    { pattern: /^\d{10}$/, message: 'Must be exactly 10 digits.' }
+                  ]}
+                >
+                  <Input placeholder="Alternative Contact 2" maxLength={10} />
                 </Form.Item>
               </Col>
             </Row>

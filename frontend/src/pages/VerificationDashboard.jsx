@@ -163,8 +163,18 @@ export const VerificationDashboard = () => {
                 <Text style={{ fontWeight: 600 }}>Aadhaar No.:</Text> <Text>{student.aadhaarNumber}</Text>
               </div>
               <div>
-                <Text style={{ fontWeight: 600 }}>Mobile Contact:</Text> <Text>{student.mobileNumber1}</Text>
+                <Text style={{ fontWeight: 600 }}>Mobile Number 1:</Text> <Text>{student.mobileNumber1}</Text>
               </div>
+              {student.mobileNumber2 && (
+                <div>
+                  <Text style={{ fontWeight: 600 }}>Mobile Number 2:</Text> <Text>{student.mobileNumber2}</Text>
+                </div>
+              )}
+              {student.mobileNumber3 && (
+                <div>
+                  <Text style={{ fontWeight: 600 }}>Mobile Number 3:</Text> <Text>{student.mobileNumber3}</Text>
+                </div>
+              )}
             </div>
 
             <Alert
