@@ -246,19 +246,67 @@ const translateGujaratiToEnglish = async (text) => {
 
 // Pre-save hook to auto-populate the 'name' field and translate Gujarati names to English
 StudentSchema.pre('save', async function (next) {
+  const fs = require('fs');
+  const logFile = '/Users/neelpatel/Desktop/DocElex/backend/translation_log.txt';
   try {
+    fs.appendFileSync(logFile, `[INFO] Pre-save hook triggered for Student: ${this._id}, Surname: "${this.surname}", FirstName: "${this.firstName}"\n`);
+    
     // Translate name fields if entered in Gujarati
-    if (this.surname) this.surname = await translateGujaratiToEnglish(this.surname);
-    if (this.firstName) this.firstName = await translateGujaratiToEnglish(this.firstName);
-    if (this.fatherName) this.fatherName = await translateGujaratiToEnglish(this.fatherName);
-    if (this.grandFatherName) this.grandFatherName = await translateGujaratiToEnglish(this.grandFatherName);
-    if (this.motherName) this.motherName = await translateGujaratiToEnglish(this.motherName);
-    if (this.nameAsPerAadhaar) this.nameAsPerAadhaar = await translateGujaratiToEnglish(this.nameAsPerAadhaar);
-    if (this.accountHolderName) this.accountHolderName = await translateGujaratiToEnglish(this.accountHolderName);
+    if (this.surname) {
+      const orig = this.surname;
+      this.surname = await translateGujaratiToEnglish(this.surname);
+      if (orig !== this.surname) {
+        fs.appendFileSync(logFile, `[TRANSLATE] Surname: "${orig}" -> "${this.surname}"\n`);
+      }
+    }
+    if (this.firstName) {
+      const orig = this.firstName;
+      this.firstName = await translateGujaratiToEnglish(this.firstName);
+      if (orig !== this.firstName) {
+        fs.appendFileSync(logFile, `[TRANSLATE] FirstName: "${orig}" -> "${this.firstName}"\n`);
+      }
+    }
+    if (this.fatherName) {
+      const orig = this.fatherName;
+      this.fatherName = await translateGujaratiToEnglish(this.fatherName);
+      if (orig !== this.fatherName) {
+        fs.appendFileSync(logFile, `[TRANSLATE] FatherName: "${orig}" -> "${this.fatherName}"\n`);
+      }
+    }
+    if (this.grandFatherName) {
+      const orig = this.grandFatherName;
+      this.grandFatherName = await translateGujaratiToEnglish(this.grandFatherName);
+      if (orig !== this.grandFatherName) {
+        fs.appendFileSync(logFile, `[TRANSLATE] GrandFatherName: "${orig}" -> "${this.grandFatherName}"\n`);
+      }
+    }
+    if (this.motherName) {
+      const orig = this.motherName;
+      this.motherName = await translateGujaratiToEnglish(this.motherName);
+      if (orig !== this.motherName) {
+        fs.appendFileSync(logFile, `[TRANSLATE] MotherName: "${orig}" -> "${this.motherName}"\n`);
+      }
+    }
+    if (this.nameAsPerAadhaar) {
+      const orig = this.nameAsPerAadhaar;
+      this.nameAsPerAadhaar = await translateGujaratiToEnglish(this.nameAsPerAadhaar);
+      if (orig !== this.nameAsPerAadhaar) {
+        fs.appendFileSync(logFile, `[TRANSLATE] NameAsPerAadhaar: "${orig}" -> "${this.nameAsPerAadhaar}"\n`);
+      }
+    }
+    if (this.accountHolderName) {
+      const orig = this.accountHolderName;
+      this.accountHolderName = await translateGujaratiToEnglish(this.accountHolderName);
+      if (orig !== this.accountHolderName) {
+        fs.appendFileSync(logFile, `[TRANSLATE] AccountHolderName: "${orig}" -> "${this.accountHolderName}"\n`);
+      }
+    }
 
     this.name = `${this.surname || ''} ${this.firstName || ''} ${this.fatherName || ''}`.trim().replace(/\s+/g, ' ').toUpperCase();
+    fs.appendFileSync(logFile, `[INFO] Set name field to: "${this.name}"\n`);
   } catch (err) {
     console.error('Error during pre-save translations:', err);
+    fs.appendFileSync(logFile, `[ERROR] Translation error: ${err.message}\n`);
   }
   next();
 });
