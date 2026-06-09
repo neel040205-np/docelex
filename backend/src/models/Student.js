@@ -209,6 +209,23 @@ StudentSchema.pre('validate', async function (next) {
   next();
 });
 
+// Helper to apply custom transliteration overrides
+const applyCustomReplacements = (translated) => {
+  translated = translated.replace(/neil/gi, (match) => {
+    if (match === 'Neil') return 'Neel';
+    if (match === 'neil') return 'neel';
+    if (match === 'NEIL') return 'NEEL';
+    return 'Neel';
+  });
+  translated = translated.replace(/alca/gi, (match) => {
+    if (match === 'Alca') return 'Alka';
+    if (match === 'alca') return 'alka';
+    if (match === 'ALCA') return 'ALKA';
+    return 'Alka';
+  });
+  return translated;
+};
+
 // Translation helper for Gujarati to English names
 const translateGujaratiToEnglish = async (text) => {
   if (!text) return '';
@@ -218,29 +235,31 @@ const translateGujaratiToEnglish = async (text) => {
   if (/^[\u0000-\u007F]*$/.test(trimmed)) {
     return trimmed;
   }
+
+  // Endpoint 1: clients5 Google Translate (Chrome Extension dict API)
+  try {
+    const url = `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=gu&tl=en&q=${encodeURIComponent(trimmed)}`;
+    const response = await axios.get(url, { timeout: 3000 });
+    if (response.data && response.data[0]) {
+      let translated = response.data[0].trim();
+      return applyCustomReplacements(translated);
+    }
+  } catch (err) {
+    console.error(`Clients5 translation failed for "${trimmed}", attempting fallback... Error:`, err.message);
+  }
+
+  // Endpoint 2: gtx Google Translate API
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=gu&tl=en&dt=t&q=${encodeURIComponent(trimmed)}`;
     const response = await axios.get(url, { timeout: 3000 });
     if (response.data && response.data[0] && response.data[0][0] && response.data[0][0][0]) {
       let translated = response.data[0][0][0].trim();
-      // Apply custom overrides/transliterations
-      translated = translated.replace(/neil/gi, (match) => {
-        if (match === 'Neil') return 'Neel';
-        if (match === 'neil') return 'neel';
-        if (match === 'NEIL') return 'NEEL';
-        return 'Neel';
-      });
-      translated = translated.replace(/alca/gi, (match) => {
-        if (match === 'Alca') return 'Alka';
-        if (match === 'alca') return 'alka';
-        if (match === 'ALCA') return 'ALKA';
-        return 'Alka';
-      });
-      return translated;
+      return applyCustomReplacements(translated);
     }
-  } catch (error) {
-    console.error(`Error translating "${trimmed}" from Gujarati to English:`, error.message);
+  } catch (err) {
+    console.error(`GTX translation failed for "${trimmed}":`, err.message);
   }
+
   return trimmed;
 };
 
