@@ -53,7 +53,10 @@ client.interceptors.response.use(
         }, 1500);
       }
     } else if (status === 403) {
-      message.error(errorMsg || i18n.t('api.notAuthorized'));
+      const isDeleteRequest = error.config && error.config.method === 'delete' && error.config.url.includes('/students/');
+      if (!isDeleteRequest) {
+        message.error(errorMsg || i18n.t('api.notAuthorized'));
+      }
     } else if (status === 404) {
       // Let individual queries handle 404 if needed, otherwise display error
       console.warn('Resource not found:', error.config.url);

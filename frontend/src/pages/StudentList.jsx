@@ -78,6 +78,7 @@ export const StudentList = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [studentIdToDelete, setStudentIdToDelete] = useState(null);
   const [deletePin, setDeletePin] = useState('');
+  const [deleteAttempts, setDeleteAttempts] = useState(0);
 
   const handleImportSubmit = async () => {
     if (fileList.length === 0) {
@@ -196,14 +197,33 @@ export const StudentList = () => {
     mutationFn: ({ id, pin }) => client.delete(`/students/${id}?pin=${pin}`),
     onSuccess: () => {
       message.success(t('students.deletedSuccess', 'Student records deleted successfully.'));
+      setDeleteAttempts(0);
       queryClient.invalidateQueries(['students']);
       queryClient.invalidateQueries(['stats']);
     },
+    onError: (error) => {
+      setDeleteAttempts((prev) => {
+        const nextAttempts = prev + 1;
+        if (nextAttempts >= 3) {
+          message.error('Too many incorrect attempts. Session expired!');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setDeleteModalVisible(false);
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1500);
+        } else {
+          message.error(`Wrong PIN, try again. (Attempts remaining: ${3 - nextAttempts})`);
+        }
+        return nextAttempts;
+      });
+    }
   });
 
   const showDeleteConfirm = (id) => {
     setStudentIdToDelete(id);
     setDeletePin('');
+    setDeleteAttempts(0);
     setDeleteModalVisible(true);
   };
 
@@ -885,6 +905,11 @@ export const StudentList = () => {
           <Paragraph>
             Deleting a student folder is a permanent action. Please enter your <strong>4-digit Authorization PIN</strong> to confirm.
           </Paragraph>
+          {deleteAttempts > 0 && (
+            <div style={{ color: '#ef4444', textAlign: 'center', marginTop: 10, fontWeight: 600 }}>
+              Wrong PIN, try again. (Attempts remaining: {3 - deleteAttempts})
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 15 }}>
             <Input.Password
               placeholder="Enter 4-digit PIN"

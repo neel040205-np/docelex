@@ -681,7 +681,7 @@ exports.deleteStudent = async (req, res) => {
 
     const userPin = req.user.deletePin || '1234';
     if (pin !== userPin) {
-      return res.status(401).json({ success: false, message: 'Unauthorized: Invalid Delete PIN' });
+      return res.status(403).json({ success: false, message: 'Invalid Delete PIN. Please try again.' });
     }
 
     const student = await req.models.Student.findById(req.params.id);
