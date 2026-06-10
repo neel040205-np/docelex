@@ -233,8 +233,8 @@ const GU_VOWELS = {
 
 // Vowel signs (matras) — replace the inherent 'a' of the preceding consonant
 const GU_MATRAS = {
-  '\u0ABE': 'a',  '\u0ABF': 'i',  '\u0AC0': 'ee',
-  '\u0AC1': 'u',  '\u0AC2': 'oo', '\u0AC3': 'ru',
+  '\u0ABE': 'a',  '\u0ABF': 'i',  '\u0AC0': 'i',
+  '\u0AC1': 'u',  '\u0AC2': 'u',  '\u0AC3': 'ru',
   '\u0AC7': 'e',  '\u0AC8': 'ai', '\u0ACB': 'o',  '\u0ACC': 'au',
 };
 
