@@ -210,7 +210,7 @@ StudentSchema.pre('validate', async function (next) {
 // ---------------------------------------------------------------------------
 // Gujarati → English Transliteration (local, no API calls, works everywhere)
 // Converts Gujarati script to English letters preserving pronunciation.
-// Examples: પટેલ → Patel, મહેશ → Mahesh, નીલ → Nil, જિતેશ → Jitesh
+// Examples: પટેલ → Patel, મહેશ → Mahesh, નીલ → Neel, હિતેન્દ્ર → Hitendra
 // ---------------------------------------------------------------------------
 
 // Consonant base sounds (without inherent vowel 'a')
@@ -226,15 +226,15 @@ const GU_CONSONANTS = {
 
 // Independent vowels (used at the start of a word or after another vowel)
 const GU_VOWELS = {
-  '\u0A85': 'a',  '\u0A86': 'a',  '\u0A87': 'i',  '\u0A88': 'i',
-  '\u0A89': 'u',  '\u0A8A': 'u',  '\u0A8B': 'ru',
+  '\u0A85': 'a',  '\u0A86': 'aa', '\u0A87': 'i',  '\u0A88': 'ee',
+  '\u0A89': 'u',  '\u0A8A': 'oo', '\u0A8B': 'ru',
   '\u0A8F': 'e',  '\u0A90': 'ai', '\u0A93': 'o',  '\u0A94': 'au',
 };
 
 // Vowel signs (matras) — replace the inherent 'a' of the preceding consonant
 const GU_MATRAS = {
-  '\u0ABE': 'a',  '\u0ABF': 'i',  '\u0AC0': 'i',
-  '\u0AC1': 'u',  '\u0AC2': 'u',  '\u0AC3': 'ru',
+  '\u0ABE': 'a',  '\u0ABF': 'i',  '\u0AC0': 'ee',
+  '\u0AC1': 'u',  '\u0AC2': 'oo', '\u0AC3': 'ru',
   '\u0AC7': 'e',  '\u0AC8': 'ai', '\u0ACB': 'o',  '\u0ACC': 'au',
 };
 
@@ -251,20 +251,26 @@ const GU_NUKTA = '\u0ABC';    // ઼  — modifier dot
 
 /**
  * Transliterate a single word from Gujarati script to Latin letters.
- * Uses schwa-deletion at end of word (standard for Gujarati/Hindi names).
+ * Uses smart schwa-deletion: removes trailing 'a' only for standalone
+ * final consonants, keeps it for conjuncts (e.g. ન્દ્ર → "ndra" not "ndr").
  */
 const transliterateWord = (word) => {
   const chars = Array.from(word);
   let result = '';
   let lastWasConsonant = false;
+  let afterVirama = false;           // true immediately after processing a virama
+  let lastConsonantInConjunct = false; // true if the final consonant followed a virama
 
   for (let i = 0; i < chars.length; i++) {
     const ch = chars[i];
 
     if (GU_CONSONANTS[ch]) {
+      // Track whether this consonant is part of a conjunct (follows a virama)
+      lastConsonantInConjunct = afterVirama;
       // Consonant: add consonant sound + inherent 'a'
       result += GU_CONSONANTS[ch] + 'a';
       lastWasConsonant = true;
+      afterVirama = false;
     } else if (GU_MATRAS[ch]) {
       // Matra: replace the inherent 'a' with the matra vowel
       if (lastWasConsonant && result.endsWith('a')) {
@@ -272,36 +278,49 @@ const transliterateWord = (word) => {
       }
       result += GU_MATRAS[ch];
       lastWasConsonant = false;
+      afterVirama = false;
+      lastConsonantInConjunct = false;
     } else if (ch === GU_VIRAMA) {
       // Virama: remove the inherent 'a' (conjunct consonant)
       if (result.endsWith('a')) {
         result = result.slice(0, -1);
       }
       lastWasConsonant = false;
+      afterVirama = true;
     } else if (GU_VOWELS[ch]) {
       result += GU_VOWELS[ch];
       lastWasConsonant = false;
+      afterVirama = false;
+      lastConsonantInConjunct = false;
     } else if (ch === GU_ANUSVARA) {
       result += 'n';
       lastWasConsonant = false;
+      afterVirama = false;
+      lastConsonantInConjunct = false;
     } else if (ch === GU_VISARGA) {
       result += 'h';
       lastWasConsonant = false;
+      afterVirama = false;
+      lastConsonantInConjunct = false;
     } else if (GU_DIGITS[ch]) {
       result += GU_DIGITS[ch];
       lastWasConsonant = false;
+      afterVirama = false;
+      lastConsonantInConjunct = false;
     } else if (ch === GU_NUKTA) {
       // Skip nukta modifier
     } else {
       // Non-Gujarati character (ASCII, punctuation, etc.) — keep as-is
       result += ch;
       lastWasConsonant = false;
+      afterVirama = false;
+      lastConsonantInConjunct = false;
     }
   }
 
-  // Schwa deletion: remove trailing inherent 'a' at end of word
-  // (standard in Gujarati pronunciation — પટેલ is "Patel" not "Patela")
-  if (lastWasConsonant && result.endsWith('a')) {
+  // Schwa deletion: remove trailing inherent 'a' ONLY for standalone final consonants.
+  // Keep the 'a' if the final consonant is part of a conjunct (e.g. ન્દ્ર → "ndra").
+  if (lastWasConsonant && result.endsWith('a') && !lastConsonantInConjunct) {
     result = result.slice(0, -1);
   }
 
