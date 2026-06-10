@@ -224,10 +224,10 @@ const GU_CONSONANTS = {
   '\u0AB6': 'sh',  '\u0AB7': 'sh',  '\u0AB8': 's',   '\u0AB9': 'h',
 };
 
-// Independent vowels (used at the start of a word or after another vowel)
+// Independent vowels (used at start of word or standalone — use simpler spelling)
 const GU_VOWELS = {
-  '\u0A85': 'a',  '\u0A86': 'aa', '\u0A87': 'i',  '\u0A88': 'ee',
-  '\u0A89': 'u',  '\u0A8A': 'oo', '\u0A8B': 'ru',
+  '\u0A85': 'a',  '\u0A86': 'a',  '\u0A87': 'i',  '\u0A88': 'i',
+  '\u0A89': 'u',  '\u0A8A': 'u',  '\u0A8B': 'ru',
   '\u0A8F': 'e',  '\u0A90': 'ai', '\u0A93': 'o',  '\u0A94': 'au',
 };
 
