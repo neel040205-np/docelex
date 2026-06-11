@@ -905,6 +905,7 @@ export const Students = () => {
       dataSource={studentsData?.data || []}
       rowKey="_id"
       loading={isLoading}
+      scroll={{ x: 'max-content' }}
       pagination={{
         current: page,
         pageSize: pageSize,
