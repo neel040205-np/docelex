@@ -64,7 +64,7 @@ After seeding, the following demo logins are created:
 
 | Role | Email | Password |
 | :--- | :--- | :--- |
-| **Teacher** | `teacher@docelex.com` | `Teacher@1234` |
+| **Teacher** | `teacher@docelex.com` | `Elex@1234` |
 
 ---
 
